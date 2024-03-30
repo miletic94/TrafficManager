@@ -1,8 +1,12 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using Unity.Mathematics;
 using UnityEngine;
+using UnityEngine.Analytics;
 using UnityEngine.Splines;
+using System.Linq;
 
 public class Travel : MonoBehaviour
 {
@@ -14,6 +18,8 @@ public class Travel : MonoBehaviour
     // Start is called before the first frame update
     void Awake()
     {
+
+        // SplineKnot: {0, 0}, [{0, 1}, {1, 1}], [{1, 2}, {2, 1}], [{2, 2}, {3, 2}], {3, 3}
         Debug.ClearDeveloperConsole();
         splineAnimate = GetComponent<SplineAnimate>();
 
@@ -24,11 +30,8 @@ public class Travel : MonoBehaviour
 
         SplinePath splinePath = new SplinePath(new SplineSlice<Spline>[4] { slice0, slice1, slice2, slice3 });
 
-        IReadOnlyList<SplineKnotIndex> knotLinkCollection = roadSplineContainer.KnotLinkCollection.GetKnotLinks(new SplineKnotIndex(0, 0));
-        foreach (SplineKnotIndex ski in knotLinkCollection)
-        {
-            Debug.Log(ski);
-        }
+        ShortestPath(roadSplineContainer, new SplineKnotIndex(1, 1), new SplineKnotIndex(3, 3));
+
         // quaternion quat = splinePath[2].Rotation;
         // quaternion conj = math.conjugate(quat);
         // Matrix4x4 rotationMatrix4x4 = Matrix4x4.Rotate(conj);
@@ -56,6 +59,73 @@ public class Travel : MonoBehaviour
         // splineAnimate.Play();
     }
 
+    // void ShortestPath(SplineKnotIndex start, SplineKnotIndex end)
+    // {
+    //     BezierKnot endKnot = roadSplineContainer[end.Spline][end.Knot];
+    //     SortedSet<SplineKnotIndexWithDistance> prioritySet = new SortedSet<SplineKnotIndexWithDistance>();
+    //     IReadOnlyList<SplineKnotIndex> knotLinkCollection = roadSplineContainer.KnotLinkCollection.GetKnotLinks(start);
+    //     SortedSet<ComparableSplineKnotIndex> visited = new SortedSet<ComparableSplineKnotIndex>();
+    // foreach (SplineKnotIndex ski in knotLinkCollection)
+    //     {
+    //         //TODO: raščlani ove špagete
+    //         Spline spline = roadSplineContainer[ski.Spline];
+
+    //         int next = ski.Knot + 1;
+    //         int prev = ski.Knot - 1;
+    //         visited.Add(new ComparableSplineKnotIndex(start));
+    //         Debug.Log(visited.Contains(new ComparableSplineKnotIndex(start)));
+    //         if (next < spline.Count)
+    //         {
+    //             BezierKnot nextKnot = spline[next];
+    //             SplineKnotIndex nextSplineKnotIndex = new SplineKnotIndex(ski.Spline, next);
+    //             float nextDistance = Vector3.Distance(nextKnot.Position, endKnot.Position);
+    //             prioritySet.Add(new SplineKnotIndexWithDistance(nextSplineKnotIndex, nextDistance));
+    //         }
+
+    //         if (prev > -1)
+    //         {
+    //             BezierKnot prevKnot = spline[prev];
+    //             SplineKnotIndex prevSplineKnotIndex = new SplineKnotIndex(ski.Spline, prev);
+    //             float prevDistance = Vector3.Distance(prevKnot.Position, endKnot.Position);
+    //             prioritySet.Add(new SplineKnotIndexWithDistance(prevSplineKnotIndex, prevDistance));
+    //         }
+    //     }
+
+    // foreach (SplineKnotIndexWithDistance skid in prioritySet)
+    // {
+    //     Debug.Log($"Spline {skid.SplineKnotIndex.Spline} Knot {skid.SplineKnotIndex.Knot} Distance: {skid.Distance}");
+    // }
+    // }
+
+    void ShortestPath(SplineContainer splineContainer, SplineKnotIndex start, SplineKnotIndex end)
+    {
+        AStarNode startNode = new AStarNode(splineContainer.KnotLinkCollection.GetKnotLinks(start));
+        AStarNode endNode = new AStarNode(splineContainer.KnotLinkCollection.GetKnotLinks(end));
+
+        HashSet<AStarNode> neighbors = startNode.GetNeighbors(splineContainer);
+
+        SortedSet<AStarNode> visited = new SortedSet<AStarNode>();
+        //TODO: Implement heap
+        List<AStarNode> heap = new List<AStarNode>();
+        foreach (AStarNode n in neighbors)
+        {
+            // 1. Calculate cost
+            n.SetCost(splineContainer, startNode, endNode);
+            // 2. If it isn't in visited add neighbor to heap.
+            Debug.Log($"n: {n}; hash: {n.GetHashCode()} visited: {visited.Contains(n)}");
+            if (!visited.Contains(n))
+            {
+                heap.Add(n);
+                visited.Add(n);
+            }
+        }
+
+        // visited.Add(new AStarNode(splineContainer.KnotLinkCollection.GetKnotLinks(new SplineKnotIndex(1, 2))));
+        // foreach (AStarNode n in visited)
+        // {
+        //     // Debug.Log(n.ToString());
+        // }
+    }
     Vector3 RotateVector(quaternion fromQuaternion, quaternion toQuaternion, Vector3 vector)
     {
         quaternion q1 = fromQuaternion;
@@ -67,4 +137,27 @@ public class Travel : MonoBehaviour
 
         return rotation.MultiplyPoint(vector);
     }
+
+
 }
+
+// class SplineKnotIndexWithDistance : IComparable<SplineKnotIndexWithDistance>
+// {
+//     SplineKnotIndex k_SplineKnotIndex;
+//     float k_Distance;
+
+//     public SplineKnotIndexWithDistance(SplineKnotIndex splineKnotIndex, float distance)
+//     {
+//         k_SplineKnotIndex = splineKnotIndex;
+//         k_Distance = distance;
+//     }
+
+//     public SplineKnotIndex SplineKnotIndex => k_SplineKnotIndex;
+
+//     public float Distance => k_Distance;
+
+//     public int CompareTo(SplineKnotIndexWithDistance other)
+//     {
+//         return this.k_Distance.CompareTo(other.k_Distance);
+//     }
+// }
