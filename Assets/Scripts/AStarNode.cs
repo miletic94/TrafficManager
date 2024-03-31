@@ -2,10 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using UnityEngine.Rendering;
 using UnityEngine.Splines;
 
-class KnotLinksSet
+public class KnotLinksSet
 {
     private HashSet<SplineKnotIndex> k_KnotLinks;
 
@@ -68,14 +67,14 @@ class KnotLinksSet
         return true;
     }
 }
-class AStarNode : IComparable<AStarNode>
+public class AStarNode : IEquatable<AStarNode>, IComparable<AStarNode>
 {
-    public float fCost { get; }
+    public float fCost { get => gCost + hCost; }
     public float gCost { get; set; }
     public float hCost { get; set; }
 
     KnotLinksSet k_KnotLinksSet;
-    KnotLinksSet KnotLinksSet => k_KnotLinksSet;
+    public KnotLinksSet KnotLinksSet => k_KnotLinksSet;
     public AStarNode(IReadOnlyList<SplineKnotIndex> knotLinks)
     {
         k_KnotLinksSet = new KnotLinksSet(knotLinks);
@@ -139,29 +138,45 @@ class AStarNode : IComparable<AStarNode>
 
     public override int GetHashCode()
     {
-        return k_KnotLinksSet.GetHashCode();
+        return KnotLinksSet.GetHashCode();
     }
 
-    public override bool Equals(object obj)
+    public bool Equals(AStarNode other)
     {
-        if (GetType() != obj.GetType())
+        if (other.GetType() == null || GetType() != other.GetType())
         {
             return false;
         }
-        AStarNode other = (AStarNode)obj;
-        return k_KnotLinksSet.Equals(other.KnotLinksSet);
+
+        return KnotLinksSet.Equals(other.KnotLinksSet);
     }
 
     public int CompareTo(AStarNode other)
     {
-        int hashCode = GetHashCode();
-        int otherHashCode = other.GetHashCode();
-
-        if (hashCode == otherHashCode) return 0;
-        if (hashCode > otherHashCode) return 1;
-        return -1;
+        return fCost.CompareTo(other.fCost);
     }
 }
+
+// public class AStarNodeSKIEqualityComparer : IEqualityComparer<AStarNode>
+// {
+//     public int GetHashCode(AStarNode obj)
+//     {
+//         return obj.KnotLinksSet.GetHashCode();
+//     }
+
+//     public bool Equals(AStarNode x, AStarNode y)
+//     {
+//         return x.KnotLinksSet.Equals(y.KnotLinksSet);
+//     }
+// }
+
+// public class AStarNodeComparer : IComparer<AStarNode>
+// {
+//     public int Compare(AStarNode x, AStarNode y)
+//     {
+//         return x.fCost.CompareTo(y.fCost);
+//     }
+// }
 
 // class StartAStarNode : AStarNode
 // {

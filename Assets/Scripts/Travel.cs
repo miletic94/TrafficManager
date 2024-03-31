@@ -1,12 +1,8 @@
-using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Unity.Mathematics;
 using UnityEngine;
-using UnityEngine.Analytics;
 using UnityEngine.Splines;
-using System.Linq;
 
 public class Travel : MonoBehaviour
 {
@@ -101,30 +97,55 @@ public class Travel : MonoBehaviour
     {
         AStarNode startNode = new AStarNode(splineContainer.KnotLinkCollection.GetKnotLinks(start));
         AStarNode endNode = new AStarNode(splineContainer.KnotLinkCollection.GetKnotLinks(end));
+        startNode.SetCost(splineContainer, startNode, endNode);
+        endNode.SetCost(splineContainer, startNode, endNode);
 
-        HashSet<AStarNode> neighbors = startNode.GetNeighbors(splineContainer);
-
-        SortedSet<AStarNode> visited = new SortedSet<AStarNode>();
+        HashSet<AStarNode> visited = new HashSet<AStarNode>();
         //TODO: Implement heap
-        List<AStarNode> heap = new List<AStarNode>();
-        foreach (AStarNode n in neighbors)
+        SortedSet<AStarNode> heap = new SortedSet<AStarNode>()
         {
-            // 1. Calculate cost
-            n.SetCost(splineContainer, startNode, endNode);
-            // 2. If it isn't in visited add neighbor to heap.
-            Debug.Log($"n: {n}; hash: {n.GetHashCode()} visited: {visited.Contains(n)}");
-            if (!visited.Contains(n))
+            startNode
+        };
+        while (heap.Count > 0)
+        {
+            AStarNode current = heap.First();
+            // Debug.Log($"CURRENT: {current}");
+            // Debug.Log($"END: {endNode}");
+
+            if (current.Equals(endNode))
             {
-                heap.Add(n);
-                visited.Add(n);
+                ShowVisited(visited);
+                return;
+            };
+
+            heap.Remove(current);
+            visited.Add(current);
+            HashSet<AStarNode> neighbors = current.GetNeighbors(splineContainer);
+            foreach (AStarNode n in neighbors)
+            {
+                // 1. Calculate cost
+                n.SetCost(splineContainer, startNode, endNode);
+                // 2. If neighbor isn't in visited add neighbor to heap.
+                // TODO: If neighbor is nearer when it comes from this parent then from the previous, change it's parent and fCost, gCost and hCost;
+                if (!visited.Contains(n))
+                {
+                    heap.Add(n);
+                }
             }
         }
 
-        // visited.Add(new AStarNode(splineContainer.KnotLinkCollection.GetKnotLinks(new SplineKnotIndex(1, 2))));
-        // foreach (AStarNode n in visited)
+        // foreach (AStarNode n in heap)
         // {
-        //     // Debug.Log(n.ToString());
+        //     Debug.Log($"HEAP: {n}");
         // }
+    }
+    void ShowVisited(HashSet<AStarNode> visited)
+    {
+        // visited.Add(new AStarNode(splineContainer.KnotLinkCollection.GetKnotLinks(new SplineKnotIndex(1, 2))));
+        foreach (AStarNode n in visited)
+        {
+            Debug.Log($"VISITED: {n}");
+        }
     }
     Vector3 RotateVector(quaternion fromQuaternion, quaternion toQuaternion, Vector3 vector)
     {
