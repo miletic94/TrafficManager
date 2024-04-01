@@ -29,14 +29,6 @@ public class Travel : MonoBehaviour
 
         ShortestPath(roadSplineContainer, new SplineKnotIndex(1, 1), new SplineKnotIndex(3, 3));
 
-        // quaternion quat = splinePath[2].Rotation;
-        // quaternion conj = math.conjugate(quat);
-        // Matrix4x4 rotationMatrix4x4 = Matrix4x4.Rotate(conj);
-        // Vector3 tangentOut = splinePath[1].TangentOut;
-
-        // Vector3 rotateTangentOut = rotationMatrix4x4.MultiplyPoint(tangentOut);
-        // Debug.Log(rotateTangentOut);
-
         Spline newSpline = new Spline
         {
             splinePath[0],
@@ -56,18 +48,19 @@ public class Travel : MonoBehaviour
         // Vector3 firstKnotTangentOutPos = TangentWorldPosition(firstKnot, TangentType.TangentOut);
         // Vector3 secondKnotTangentInPos = TangentWorldPosition(secondKnot, TangentType.TangentIn);
         // Debug.Log(CurveUtility.CalculateLength(new BezierCurve(firstKnot.Position, TangentWorldPosition(firstKnot, TangentType.TangentOut), TangentWorldPosition(secondKnot, TangentType.TangentIn), secondKnot.Position)));
-        Debug.Log(roadSplineContainer.Splines.Count);
-        Debug.Log(roadSplineContainer.Splines[0].Count);
-        for (int i = 0; i < roadSplineContainer.Splines.Count; i++)
-        {
-            for (int j = 0; j < roadSplineContainer[i].Count - 1; j++)
-            {
-                BezierKnot firstKnot = roadSplineContainer.Splines[i][j];
-                BezierKnot secondKnot = roadSplineContainer.Splines[i][j + 1];
-                var distance = CurveUtility.CalculateLength(new BezierCurve(firstKnot.Position, TangentWorldPosition(firstKnot, TangentType.TangentOut), TangentWorldPosition(secondKnot, TangentType.TangentIn), secondKnot.Position));
-                Debug.Log($"SplineKnot {i}, {j} SplineKnot {i}, {j + 1} Distance {distance}");
-            }
-        }
+
+        // Debug.Log(roadSplineContainer.Splines.Count);
+        // Debug.Log(roadSplineContainer.Splines[0].Count);
+        // for (int i = 0; i < roadSplineContainer.Splines.Count; i++)
+        // {
+        //     for (int j = 0; j < roadSplineContainer[i].Count - 1; j++)
+        //     {
+        //         BezierKnot firstKnot = roadSplineContainer.Splines[i][j];
+        //         BezierKnot secondKnot = roadSplineContainer.Splines[i][j + 1];
+        //         var distance = CurveUtility.CalculateLength(new BezierCurve(firstKnot.Position, TangentWorldPosition(firstKnot, TangentType.TangentOut), TangentWorldPosition(secondKnot, TangentType.TangentIn), secondKnot.Position));
+        //         Debug.Log($"SplineKnot {i}, {j} SplineKnot {i}, {j + 1} Distance {distance}");
+        //     }
+        // }
 
         // Debug.Log($"First Knot Position: {firstKnot.Position}");
         // Debug.Log($"First Knot Rotation: {firstKnot.Rotation}");
@@ -184,11 +177,21 @@ public class Travel : MonoBehaviour
             // Debug.Log($"CURRENT: {current}");
             // Debug.Log($"END: {endNode}");
 
-            if (current.Equals(endNode))
-            {
-                // ShowVisited(visited);
-                return;
-            };
+            // SplineKnotIndex fromSKI;
+            // SplineKnotIndex toSKI;
+            // var isFound = current.TryFindKnotLinkToNode(splineContainer, startNode, out fromSKI, out toSKI);
+            // if (isFound)
+            // {
+            //     Debug.Log($"FROMSpline {fromSKI.Spline} FROMKnot {fromSKI.Knot} \n TOSpline {toSKI.Spline} TOKnot {toSKI.Knot}");
+            // }
+            //
+            // SplineKnotIndex fromSKI2;
+            // SplineKnotIndex toSKI2;
+            // var isFound2 = current.TryFindKnotLinkToNode(splineContainer, endNode, out fromSKI2, out toSKI2);
+            // if (isFound2)
+            // {
+            //     Debug.Log($"FROMSpline {fromSKI2.Spline} FROMKnot {fromSKI2.Knot} \n TOSpline {toSKI2.Spline} TOKnot {toSKI2.Knot}");
+            // }
 
             heap.Remove(current);
             visited.Add(current);

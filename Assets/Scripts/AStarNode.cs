@@ -5,31 +5,77 @@ using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Splines;
 
-public class KnotLinksSet
+// public class KnotLinksSet
+// {
+//     private HashSet<SplineKnotIndex> k_KnotLinks;
+
+//     public HashSet<SplineKnotIndex> KnotLinks => k_KnotLinks;
+
+//     public KnotLinksSet(IReadOnlyList<SplineKnotIndex> knotLinks)
+//     {
+//         k_KnotLinks = SetKnotLinks(knotLinks);
+//     }
+
+//     private HashSet<SplineKnotIndex> SetKnotLinks(IReadOnlyList<SplineKnotIndex> knotLinks)
+//     {
+//         HashSet<SplineKnotIndex> set = new HashSet<SplineKnotIndex>();
+//         foreach (SplineKnotIndex ski in knotLinks)
+//         {
+//             set.Add(ski);
+//         }
+//         return set;
+//     }
+//     public override int GetHashCode()
+//     {
+//         List<int> hashes = new List<int>();
+//         int sumHash = 0;
+//         foreach (SplineKnotIndex ski in k_KnotLinks)
+//         {
+//             hashes.Add(ski.GetHashCode());
+//         }
+
+//         // Multiply each ski hash with each ski hash
+//         for (int i = 0; i <= hashes.Count - 1; i++)
+//         {
+//             for (int j = i + 1; j <= hashes.Count; j++)
+//             {
+//                 if (j == hashes.Count)
+//                 {
+//                     sumHash += hashes[i] * 1;
+//                 }
+//                 else
+//                 {
+//                     sumHash += hashes[i] * hashes[j];
+//                 }
+//             }
+//         }
+//         return sumHash;
+//     }
+//     public override bool Equals(object obj)
+//     {
+//         if (obj == null || GetType() != obj.GetType())
+//             return false;
+
+//         KnotLinksSet other = (KnotLinksSet)obj;
+
+//         foreach (SplineKnotIndex ski in other.k_KnotLinks)
+//         {
+//             if (!k_KnotLinks.Contains(ski))
+//             {
+//                 return false;
+//             }
+//         }
+//         return true;
+//     }
+// }
+
+public class KnotLinksEqualityComparer : IEqualityComparer<SortedSet<SplineKnotIndex>>
 {
-    private HashSet<SplineKnotIndex> k_KnotLinks;
-
-    public HashSet<SplineKnotIndex> KnotLinks => k_KnotLinks;
-
-    public KnotLinksSet(IReadOnlyList<SplineKnotIndex> knotLinks)
-    {
-        k_KnotLinks = SetKnotLinks(knotLinks);
-    }
-
-    private HashSet<SplineKnotIndex> SetKnotLinks(IReadOnlyList<SplineKnotIndex> knotLinks)
-    {
-        HashSet<SplineKnotIndex> set = new HashSet<SplineKnotIndex>();
-        foreach (SplineKnotIndex ski in knotLinks)
-        {
-            set.Add(ski);
-        }
-        return set;
-    }
-    public override int GetHashCode()
+    public int GetHashCode(SortedSet<SplineKnotIndex> x)
     {
         List<int> hashes = new List<int>();
         int sumHash = 0;
-        foreach (SplineKnotIndex ski in k_KnotLinks)
+        foreach (SplineKnotIndex ski in x)
         {
             hashes.Add(ski.GetHashCode());
         }
@@ -51,21 +97,38 @@ public class KnotLinksSet
         }
         return sumHash;
     }
-    public override bool Equals(object obj)
+    public bool Equals(SortedSet<SplineKnotIndex> x, SortedSet<SplineKnotIndex> y)
     {
-        if (obj == null || GetType() != obj.GetType())
-            return false;
 
-        KnotLinksSet other = (KnotLinksSet)obj;
-
-        foreach (SplineKnotIndex ski in other.k_KnotLinks)
+        foreach (SplineKnotIndex ski in x)
         {
-            if (!k_KnotLinks.Contains(ski))
+            if (!y.Contains(ski))
             {
                 return false;
             }
         }
         return true;
+    }
+}
+
+public class SplineKnotIndexComparer : IComparer<SplineKnotIndex>
+{
+    public int Compare(SplineKnotIndex x, SplineKnotIndex y)
+    {
+        if (x.Spline < y.Spline)
+            return -1;
+        else if (x.Spline > y.Spline)
+            return 1;
+        else
+        {
+            // If Spline values are equal, compare Knot values
+            if (x.Knot < y.Knot)
+                return -1;
+            else if (x.Knot > y.Knot)
+                return 1;
+            else
+                return 0; // SKIs are equal
+        }
     }
 }
 public class AStarNode : IEquatable<AStarNode>, IComparable<AStarNode>
@@ -74,20 +137,30 @@ public class AStarNode : IEquatable<AStarNode>, IComparable<AStarNode>
     public float gCost { get; set; }
     public float hCost { get; set; }
 
-    KnotLinksSet k_KnotLinksSet;
-    public KnotLinksSet KnotLinksSet => k_KnotLinksSet;
+
+    public SortedSet<SplineKnotIndex> KnotLinksSet { get; }
     public AStarNode(IReadOnlyList<SplineKnotIndex> knotLinks)
     {
-        k_KnotLinksSet = new KnotLinksSet(knotLinks);
+        KnotLinksSet = SetKnotLinks(knotLinks);
     }
 
-    public AStarNode(SplineContainer splineContainer, AStarNode start, AStarNode end, IReadOnlyList<SplineKnotIndex> knotLinks)
-    {
-        k_KnotLinksSet = new KnotLinksSet(knotLinks);
-        SetCost(splineContainer, start, end);
-    }
+    // public AStarNode(SplineContainer splineContainer, AStarNode start, AStarNode end, IReadOnlyList<SplineKnotIndex> knotLinks)
+    // {
+    //     SetKnotLinks(knotLinks);
+    //     SetCost(splineContainer, start, end);
+    // }
 
     public AStarNode() { }
+
+    private SortedSet<SplineKnotIndex> SetKnotLinks(IReadOnlyList<SplineKnotIndex> knotLinks)
+    {
+        SortedSet<SplineKnotIndex> set = new SortedSet<SplineKnotIndex>(new SplineKnotIndexComparer());
+        foreach (SplineKnotIndex ski in knotLinks)
+        {
+            set.Add(ski);
+        }
+        return set;
+    }
 
     public void SetCost(SplineContainer splineContainer, AStarNode parentNode, AStarNode endNode)
     {
@@ -108,8 +181,8 @@ public class AStarNode : IEquatable<AStarNode>, IComparable<AStarNode>
     // Compute fCost for node that has parent (is not starting node)
     public void ComputeCost(SplineContainer splineContainer, AStarNode parentNode, AStarNode endNode, out float gCost, out float hCost)
     {
-        BezierKnot endKnot = splineContainer[endNode.KnotLinksSet.KnotLinks.First().Spline][endNode.KnotLinksSet.KnotLinks.First().Knot];
-        BezierKnot currentKnot = splineContainer[KnotLinksSet.KnotLinks.First().Spline][KnotLinksSet.KnotLinks.First().Knot];
+        BezierKnot endKnot = splineContainer[endNode.KnotLinksSet.First().Spline][endNode.KnotLinksSet.First().Knot];
+        BezierKnot currentKnot = splineContainer[KnotLinksSet.First().Spline][KnotLinksSet.First().Knot];
 
         // TODO: Better heuristics. For example gCost: distance between parent and current node + distance from parent to start node.  
         gCost = parentNode.gCost; // + Distance from the parent node to current node 
@@ -119,8 +192,8 @@ public class AStarNode : IEquatable<AStarNode>, IComparable<AStarNode>
     // Compute fCost for the start node
     public void ComputeCost(SplineContainer splineContainer, AStarNode endNode, out float gCost, out float hCost)
     {
-        BezierKnot endKnot = splineContainer[endNode.KnotLinksSet.KnotLinks.First().Spline][endNode.KnotLinksSet.KnotLinks.First().Knot];
-        BezierKnot currentKnot = splineContainer[KnotLinksSet.KnotLinks.First().Spline][KnotLinksSet.KnotLinks.First().Knot];
+        BezierKnot endKnot = splineContainer[endNode.KnotLinksSet.First().Spline][endNode.KnotLinksSet.First().Knot];
+        BezierKnot currentKnot = splineContainer[KnotLinksSet.First().Spline][KnotLinksSet.First().Knot];
         gCost = 0;
         hCost = Vector3.Distance(currentKnot.Position, endKnot.Position);
     }
@@ -128,7 +201,7 @@ public class AStarNode : IEquatable<AStarNode>, IComparable<AStarNode>
     public HashSet<AStarNode> GetNeighbors(SplineContainer splineContainer)
     {
         HashSet<AStarNode> neighbors = new HashSet<AStarNode>();
-        foreach (SplineKnotIndex splineKnotIndex in k_KnotLinksSet.KnotLinks)
+        foreach (SplineKnotIndex splineKnotIndex in KnotLinksSet)
         {
             Spline spline = splineContainer[splineKnotIndex.Spline];
             int nextKnotIndex = splineKnotIndex.Knot + 1;
@@ -148,10 +221,54 @@ public class AStarNode : IEquatable<AStarNode>, IComparable<AStarNode>
         return neighbors;
     }
 
+    public bool TryFindKnotLinkToNode(SplineContainer splineContainer, AStarNode otherNode, out SplineKnotIndex fromSKI, out SplineKnotIndex toSKI)
+    {
+        if (!this.Equals(otherNode))
+        {
+            foreach (SplineKnotIndex ski in KnotLinksSet)
+            {
+                Spline spline = splineContainer[ski.Spline];
+                int nextKnot = ski.Knot + 1;
+                int prevKnot = ski.Knot - 1;
+
+                if (prevKnot >= 0)
+                {
+                    SplineKnotIndex SKI;
+                    bool isFound = otherNode.KnotLinksSet.TryGetValue(new SplineKnotIndex(ski.Spline, prevKnot), out SKI);
+
+                    if (isFound)
+                    {
+                        fromSKI = ski;
+                        toSKI = SKI;
+                        return true;
+                    }
+                }
+                if (nextKnot < spline.Count)
+                {
+                    SplineKnotIndex SKI;
+                    bool isFound = otherNode.KnotLinksSet.TryGetValue(new SplineKnotIndex(ski.Spline, nextKnot), out SKI);
+
+                    if (isFound)
+                    {
+                        fromSKI = ski;
+                        toSKI = SKI;
+                        return true;
+                    }
+                }
+            }
+            fromSKI = new SplineKnotIndex(-1, -1);
+            toSKI = new SplineKnotIndex(-1, -1);
+            return false;
+        }
+        fromSKI = KnotLinksSet.First();
+        toSKI = KnotLinksSet.First();
+        return true;
+    }
+
     public override string ToString()
     {
         String s = "";
-        foreach (SplineKnotIndex ski in k_KnotLinksSet.KnotLinks)
+        foreach (SplineKnotIndex ski in KnotLinksSet)
         {
             s += $"Spline: {ski.Spline}, Knot: {ski.Knot} ";
         }
@@ -162,7 +279,9 @@ public class AStarNode : IEquatable<AStarNode>, IComparable<AStarNode>
 
     public override int GetHashCode()
     {
-        return KnotLinksSet.GetHashCode();
+        var comparer = new KnotLinksEqualityComparer();
+
+        return comparer.GetHashCode(KnotLinksSet);
     }
 
     public bool Equals(AStarNode other)
@@ -171,8 +290,8 @@ public class AStarNode : IEquatable<AStarNode>, IComparable<AStarNode>
         {
             return false;
         }
-
-        return KnotLinksSet.Equals(other.KnotLinksSet);
+        var comparer = new KnotLinksEqualityComparer();
+        return comparer.Equals(KnotLinksSet, other.KnotLinksSet);
     }
 
     public int CompareTo(AStarNode other)
