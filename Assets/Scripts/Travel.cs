@@ -3,6 +3,7 @@ using System.Linq;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Splines;
+using UnityEngine.UIElements;
 
 public class Travel : MonoBehaviour
 {
@@ -45,9 +46,80 @@ public class Travel : MonoBehaviour
             new BezierKnot(splinePath[7].Position, splinePath[7].TangentIn, RotateVector(splinePath[7].Rotation, splinePath[8].Rotation, splinePath[8].TangentOut), splinePath[7].Rotation),
         };
 
+        // Debug.Log(RotateVector(splinePath[0].Rotation, quaternion.identity, splinePath[0].TangentIn));
+        // Debug.Log(RotateVector(splinePath[1].Rotation, quaternion.identity, splinePath[1].TangentIn));
 
+        // Debug.Log(CurveUtility.CalculateLength(new BezierCurve(splinePath[0].Position, RotateVector(splinePath[0].Rotation, quaternion.identity, splinePath[0].TangentOut), RotateVector(splinePath[1].Rotation, quaternion.identity, splinePath[1].TangentIn), splinePath[1].Position), 4));
+
+        // BezierKnot firstKnot = roadSplineContainer.Splines[0][0];
+        // BezierKnot secondKnot = roadSplineContainer.Splines[0][1];
+        // Vector3 firstKnotTangentOutPos = TangentWorldPosition(firstKnot, TangentType.TangentOut);
+        // Vector3 secondKnotTangentInPos = TangentWorldPosition(secondKnot, TangentType.TangentIn);
+        // Debug.Log(CurveUtility.CalculateLength(new BezierCurve(firstKnot.Position, TangentWorldPosition(firstKnot, TangentType.TangentOut), TangentWorldPosition(secondKnot, TangentType.TangentIn), secondKnot.Position)));
+        Debug.Log(roadSplineContainer.Splines.Count);
+        Debug.Log(roadSplineContainer.Splines[0].Count);
+        for (int i = 0; i < roadSplineContainer.Splines.Count; i++)
+        {
+            for (int j = 0; j < roadSplineContainer[i].Count - 1; j++)
+            {
+                BezierKnot firstKnot = roadSplineContainer.Splines[i][j];
+                BezierKnot secondKnot = roadSplineContainer.Splines[i][j + 1];
+                var distance = CurveUtility.CalculateLength(new BezierCurve(firstKnot.Position, TangentWorldPosition(firstKnot, TangentType.TangentOut), TangentWorldPosition(secondKnot, TangentType.TangentIn), secondKnot.Position));
+                Debug.Log($"SplineKnot {i}, {j} SplineKnot {i}, {j + 1} Distance {distance}");
+            }
+        }
+
+        // Debug.Log($"First Knot Position: {firstKnot.Position}");
+        // Debug.Log($"First Knot Rotation: {firstKnot.Rotation}");
+        // Debug.Log($"First Knot TangentOut: {firstKnot.TangentOut}");
+        // Debug.Log($"Rotated: {RotateVector(firstKnot.Rotation, quaternion.identity, firstKnot.TangentOut)}");
+        // Debug.Log($"First Knot TangentOut Position: {firstKnotTangentOutPos}");
+
+        // Debug.Log(secondKnot.Position);
+        // Debug.Log(secondKnot.Rotation);
+        // Debug.Log(secondKnot.TangentIn);
+        // Debug.Log(secondKnotTangentInPos);
+
+        // Debug.Log(CurveUtility.ApproximateLength(new BezierCurve(firstKnot.Position, RotateVector(firstKnot.Rotation, quaternion.identity, firstKnot.TangentOut), RotateVector(secondKnot.Rotation, quaternion.identity, secondKnot.TangentIn), secondKnot.Position)));
+
+        // Debug.Log(CurveUtility.CalculateLength(new BezierCurve(firstKnot.Position, TangentWorldPosition(firstKnot, TangentType.TangentOut), TangentWorldPosition(secondKnot, TangentType.TangentIn), secondKnot.Position)));
+
+        // Debug.Log(CurveUtility.CalculateLength(new BezierCurve(firstKnot.Position, secondKnot.Position), 4));
+
+        // TestRotations();
         splineContainer.Splines = new Spline[1] { newSpline };
         splineAnimate.Container = splineContainer;
+    }
+
+    Vector3 TangentWorldPosition(BezierKnot knot, TangentType tangentType)
+    {
+        float3 tangentPosition = tangentType == TangentType.TangentIn ? knot.TangentIn : knot.TangentOut;
+        // TODO: Why this works and RotateVector(knto.Rotation, quaternion.identity, tangetnPosition) doesn't?
+        return (Vector3)knot.Position + RotateVector(quaternion.identity, knot.Rotation, tangentPosition);
+    }
+
+    // void TestRotations()
+    // {
+    //     quaternion a0 = new quaternion(0, 0, 0, 1);
+    //     quaternion a90 = new quaternion(0.71f, 0, 0, 0.71f);
+    //     quaternion a180 = new quaternion(1, 0, 0, 0);
+    //     quaternion a270 = new quaternion(0.71f, 0, 0, -0.71f);
+
+    //     Vector3 vector = new Vector3(0, 0, 5);
+
+    //     List<quaternion> angles = new List<quaternion>()
+    //     { a0, a90, a180, a270};
+
+    //     foreach (quaternion angle in angles)
+    //     {
+    //         Debug.Log(RotateVector(angle, quaternion.identity, vector));
+    //     }
+    // }
+
+    public enum TangentType
+    {
+        TangentIn,
+        TangentOut
     }
 
     private void Start()
@@ -97,7 +169,7 @@ public class Travel : MonoBehaviour
     {
         AStarNode startNode = new AStarNode(splineContainer.KnotLinkCollection.GetKnotLinks(start));
         AStarNode endNode = new AStarNode(splineContainer.KnotLinkCollection.GetKnotLinks(end));
-        startNode.SetCost(splineContainer, startNode, endNode);
+        startNode.SetCost(splineContainer, endNode);
         endNode.SetCost(splineContainer, startNode, endNode);
 
         HashSet<AStarNode> visited = new HashSet<AStarNode>();
@@ -114,7 +186,7 @@ public class Travel : MonoBehaviour
 
             if (current.Equals(endNode))
             {
-                ShowVisited(visited);
+                // ShowVisited(visited);
                 return;
             };
 

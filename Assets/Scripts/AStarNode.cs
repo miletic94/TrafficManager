@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Splines;
 
@@ -88,16 +89,39 @@ public class AStarNode : IEquatable<AStarNode>, IComparable<AStarNode>
 
     public AStarNode() { }
 
-
-    //TODO: Should have ComputeCost and SetCost, so I could compare possible cost with existing cost before setting it;
-    public void SetCost(SplineContainer splineContainer, AStarNode start, AStarNode end)
+    public void SetCost(SplineContainer splineContainer, AStarNode parentNode, AStarNode endNode)
     {
-        BezierKnot startKnot = splineContainer[start.k_KnotLinksSet.KnotLinks.First().Spline][start.k_KnotLinksSet.KnotLinks.First().Knot];
-        BezierKnot endKnot = splineContainer[end.k_KnotLinksSet.KnotLinks.First().Spline][end.k_KnotLinksSet.KnotLinks.First().Knot];
-        BezierKnot currentKnot = splineContainer[k_KnotLinksSet.KnotLinks.First().Spline][k_KnotLinksSet.KnotLinks.First().Knot];
+        float gCost, hCost;
+        ComputeCost(splineContainer, parentNode, endNode, out gCost, out hCost);
+        this.gCost = gCost;
+        this.hCost = hCost;
+    }
+
+    public void SetCost(SplineContainer splineContainer, AStarNode endNode)
+    {
+        float gCost, hCost;
+        ComputeCost(splineContainer, endNode, out gCost, out hCost);
+        this.gCost = gCost;
+        this.hCost = hCost;
+    }
+
+    // Compute fCost for node that has parent (is not starting node)
+    public void ComputeCost(SplineContainer splineContainer, AStarNode parentNode, AStarNode endNode, out float gCost, out float hCost)
+    {
+        BezierKnot endKnot = splineContainer[endNode.KnotLinksSet.KnotLinks.First().Spline][endNode.KnotLinksSet.KnotLinks.First().Knot];
+        BezierKnot currentKnot = splineContainer[KnotLinksSet.KnotLinks.First().Spline][KnotLinksSet.KnotLinks.First().Knot];
 
         // TODO: Better heuristics. For example gCost: distance between parent and current node + distance from parent to start node.  
-        gCost = Vector3.Distance(currentKnot.Position, startKnot.Position);
+        gCost = parentNode.gCost; // + Distance from the parent node to current node 
+        hCost = Vector3.Distance(currentKnot.Position, endKnot.Position);
+    }
+
+    // Compute fCost for the start node
+    public void ComputeCost(SplineContainer splineContainer, AStarNode endNode, out float gCost, out float hCost)
+    {
+        BezierKnot endKnot = splineContainer[endNode.KnotLinksSet.KnotLinks.First().Spline][endNode.KnotLinksSet.KnotLinks.First().Knot];
+        BezierKnot currentKnot = splineContainer[KnotLinksSet.KnotLinks.First().Spline][KnotLinksSet.KnotLinks.First().Knot];
+        gCost = 0;
         hCost = Vector3.Distance(currentKnot.Position, endKnot.Position);
     }
 
