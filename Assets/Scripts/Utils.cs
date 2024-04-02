@@ -10,6 +10,7 @@ public static class Utils
         TangentIn,
         TangentOut
     }
+    // Probably redundant (Try by creating BezierCurve with BezierKnots as arguments.)
     public static Vector3 TangentWorldPosition(BezierKnot knot, TangentType tangentType)
     {
         float3 tangentPosition = tangentType == TangentType.TangentIn ? knot.TangentIn : knot.TangentOut;

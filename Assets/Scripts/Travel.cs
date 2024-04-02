@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -25,7 +26,7 @@ public class Travel : MonoBehaviour
 
         SplinePath splinePath = new SplinePath(new SplineSlice<Spline>[4] { slice0, slice1, slice2, slice3 });
 
-        ShortestPath(roadSplineContainer, new SplineKnotIndex(1, 1), new SplineKnotIndex(3, 3));
+        ShortestPath(roadSplineContainer, new SplineKnotIndex(3, 0), new SplineKnotIndex(2, 0));
 
         Spline newSpline = new Spline
         {
@@ -157,7 +158,7 @@ public class Travel : MonoBehaviour
     {
         AStarNode startNode = new AStarNode(splineContainer.KnotLinkCollection.GetKnotLinks(start));
         AStarNode endNode = new AStarNode(splineContainer.KnotLinkCollection.GetKnotLinks(end));
-        startNode.SetCost(splineContainer, endNode);
+        startNode.ComputeAndSetCost(splineContainer, endNode);
 
         HashSet<AStarNode> visited = new HashSet<AStarNode>();
         //TODO: Implement heap
@@ -168,6 +169,8 @@ public class Travel : MonoBehaviour
         while (heap.Count > 0)
         {
             AStarNode current = heap.First();
+            heap.Remove(current);
+            visited.Add(current);
             // Debug.Log($"CURRENT: {current}");
             // Debug.Log($"END: {endNode}");
 
@@ -188,22 +191,43 @@ public class Travel : MonoBehaviour
             // }
             if (current.Equals(endNode))
             {
-                // ShowVisited(visited);
+                LinkedList<AStarNode> path = GeneratePath(current);
+                foreach (AStarNode node in path)
+                {
+                    Debug.Log(node.ToString());
+                }
                 return;
             }
-            heap.Remove(current);
-            visited.Add(current);
+
             HashSet<AStarNode> neighbors = current.GetNeighbors(splineContainer);
             foreach (AStarNode n in neighbors)
             {
-                //TODO: Put this inside of if statement bellow
-                // 1. Calculate cost
-                n.SetCost(splineContainer, current, endNode);
-                // 2. If neighbor isn't in visited add neighbor to heap.
-                // TODO: If neighbor is nearer when it comes from this parent then from the previous, change it's parent and fCost, gCost and hCost;
+
                 if (!visited.Contains(n))
                 {
-                    heap.Add(n);
+                    AStarNode heapN;
+                    bool heapContainsN = heap.TryGetValue(n, out heapN);
+
+                    float fCost, gCost, hCost;
+                    n.ComputeCost(splineContainer, current, endNode, out gCost, out hCost);
+                    fCost = gCost + hCost;
+
+                    if (heapContainsN)
+                    {
+                        if (heapN.fCost > fCost)
+                        {
+                            heapN.gCost = gCost;
+                            heapN.hCost = hCost;
+                            heapN.parent = current;
+                        }
+                    }
+                    else
+                    {
+                        n.gCost = gCost;
+                        n.hCost = hCost;
+                        n.parent = current;
+                        heap.Add(n);
+                    }
                 }
             }
         }
@@ -212,6 +236,21 @@ public class Travel : MonoBehaviour
         // {
         //     Debug.Log($"HEAP: {n}");
         // }
+    }
+
+    LinkedList<AStarNode> GeneratePath(AStarNode endNode)
+    {
+        LinkedList<AStarNode> path = new LinkedList<AStarNode>();
+        AStarNode current = endNode;
+
+        path.AddFirst(current);
+
+        while (current.parent != null)
+        {
+            current = current.parent;
+            path.AddFirst(current);
+        }
+        return path;
     }
     void ShowVisited(HashSet<AStarNode> visited)
     {

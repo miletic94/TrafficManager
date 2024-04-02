@@ -136,12 +136,15 @@ public class AStarNode : IEquatable<AStarNode>, IComparable<AStarNode>
     public float fCost { get => gCost + hCost; }
     public float gCost { get; set; }
     public float hCost { get; set; }
+    public AStarNode parent;
 
 
     public SortedSet<SplineKnotIndex> KnotLinksSet { get; }
     public AStarNode(IReadOnlyList<SplineKnotIndex> knotLinks)
     {
         KnotLinksSet = SetKnotLinks(knotLinks);
+        gCost = float.PositiveInfinity;
+        hCost = float.NegativeInfinity;
     }
 
     // public AStarNode(SplineContainer splineContainer, AStarNode start, AStarNode end, IReadOnlyList<SplineKnotIndex> knotLinks)
@@ -150,7 +153,7 @@ public class AStarNode : IEquatable<AStarNode>, IComparable<AStarNode>
     //     SetCost(splineContainer, start, end);
     // }
 
-    public AStarNode() { }
+    // public AStarNode() { }
 
     private SortedSet<SplineKnotIndex> SetKnotLinks(IReadOnlyList<SplineKnotIndex> knotLinks)
     {
@@ -162,7 +165,8 @@ public class AStarNode : IEquatable<AStarNode>, IComparable<AStarNode>
         return set;
     }
 
-    public void SetCost(SplineContainer splineContainer, AStarNode parentNode, AStarNode endNode)
+    //Probably redundant
+    public void ComputeAndSetCost(SplineContainer splineContainer, AStarNode parentNode, AStarNode endNode)
     {
         float gCost, hCost;
         ComputeCost(splineContainer, parentNode, endNode, out gCost, out hCost);
@@ -170,7 +174,7 @@ public class AStarNode : IEquatable<AStarNode>, IComparable<AStarNode>
         this.hCost = hCost;
     }
 
-    public void SetCost(SplineContainer splineContainer, AStarNode endNode)
+    public void ComputeAndSetCost(SplineContainer splineContainer, AStarNode endNode)
     {
         float gCost, hCost;
         ComputeCost(splineContainer, endNode, out gCost, out hCost);
