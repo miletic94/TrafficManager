@@ -188,7 +188,6 @@ public class AStarNode : IEquatable<AStarNode>, IComparable<AStarNode>
         BezierKnot endKnot = splineContainer[endNode.KnotLinksSet.First().Spline][endNode.KnotLinksSet.First().Knot];
         BezierKnot currentKnot = splineContainer[KnotLinksSet.First().Spline][KnotLinksSet.First().Knot];
 
-        // TODO: Better heuristics. For example gCost: distance between parent and current node + distance from parent to start node.  
         float distanceToParent;
         bool isDistanceToParent = TryGetDistanceToNode(splineContainer, parentNode, out distanceToParent);
         if (isDistanceToParent)
@@ -293,9 +292,7 @@ public class AStarNode : IEquatable<AStarNode>, IComparable<AStarNode>
 
                 BezierCurve curve = new BezierCurve(fromKnot.Position, Utils.TangentWorldPosition(fromKnot, Utils.TangentType.TangentOut), Utils.TangentWorldPosition(toKnot, Utils.TangentType.TangentIn), toKnot.Position);
 
-                distance = CurveUtility.CalculateLength(curve);
-
-                Debug.Log($"Distance {distance}");
+                distance = CurveUtility.CalculateLength(curve, resolution);
 
                 return true;
             }
