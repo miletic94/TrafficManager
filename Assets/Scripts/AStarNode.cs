@@ -185,8 +185,14 @@ public class AStarNode : IEquatable<AStarNode>, IComparable<AStarNode>
         BezierKnot currentKnot = splineContainer[KnotLinksSet.First().Spline][KnotLinksSet.First().Knot];
 
         // TODO: Better heuristics. For example gCost: distance between parent and current node + distance from parent to start node.  
-        gCost = parentNode.gCost; // + Distance from the parent node to current node 
-        hCost = Vector3.Distance(currentKnot.Position, endKnot.Position);
+        float distanceToParent;
+        bool isDistanceToParent = TryGetDistanceToNode(splineContainer, parentNode, out distanceToParent);
+        if (isDistanceToParent)
+        {
+            gCost = parentNode.gCost + distanceToParent;
+            hCost = Vector3.Distance(currentKnot.Position, endKnot.Position);
+        }
+        else throw new InvalidOperationException("Trying to find distance between nodes that are not connected");
     }
 
     // Compute fCost for the start node
@@ -263,6 +269,70 @@ public class AStarNode : IEquatable<AStarNode>, IComparable<AStarNode>
         fromSKI = KnotLinksSet.First();
         toSKI = KnotLinksSet.First();
         return true;
+    }
+
+    public bool TryGetDistanceToNode(SplineContainer splineContainer, AStarNode otherNode, out float distance, int resolution = 30)
+    {
+        if (!this.Equals(otherNode))
+        {
+            // fromConnectionSKI is not directly related to fromKnot because fromKnot has to be the one that comes first in the spline from the two.
+            // Order matters in splines.
+            // fromConnectionSKI refers to the SKI of the node currently under processing, while fromSKIOrdered refers to the SKI of the knot that precedes it in the spline sequence.
+            SplineKnotIndex fromConnectionSKI, toConnectionSKI, fromSKIOrdered, toSKIOrdered;
+            bool isLinkFound = TryFindKnotLinkToNode(splineContainer, otherNode, out fromConnectionSKI, out toConnectionSKI);
+            Utils.OrderSKIsByKnot(fromConnectionSKI, toConnectionSKI, out fromSKIOrdered, out toSKIOrdered);
+
+            if (isLinkFound)
+            {
+                BezierKnot fromKnot = splineContainer.Splines[fromSKIOrdered.Spline][fromSKIOrdered.Knot];
+                BezierKnot toKnot = splineContainer.Splines[toSKIOrdered.Spline][toSKIOrdered.Knot];
+
+                BezierCurve curve = new BezierCurve(fromKnot.Position, Utils.TangentWorldPosition(fromKnot, Utils.TangentType.TangentOut), Utils.TangentWorldPosition(toKnot, Utils.TangentType.TangentIn), toKnot.Position);
+
+                distance = CurveUtility.CalculateLength(curve);
+
+                Debug.Log($"Distance {distance}");
+
+                return true;
+            }
+        }
+        else
+        {
+            distance = 0;
+            return true;
+        }
+        distance = -1;
+        return false;
+    }
+
+    public bool TryGetApproximateDistanceToNode(SplineContainer splineContainer, AStarNode otherNode, out float distance)
+    {
+        if (!this.Equals(otherNode))
+        {
+            // fromConnectionSKI is not directly related to fromKnot because fromKnot has to be the one that comes first in the spline from the two.
+            // Order matters in splines.
+            // fromConnectionSKI refers to the SKI of the node currently under processing, while fromSKIOrdered refers to the SKI of the knot that precedes it in the spline sequence.
+            SplineKnotIndex fromConnectionSKI, toConnectionSKI, fromSKIOrdered, toSKIOrdered;
+            bool isLinkFound = TryFindKnotLinkToNode(splineContainer, otherNode, out fromConnectionSKI, out toConnectionSKI);
+            Utils.OrderSKIsByKnot(fromConnectionSKI, toConnectionSKI, out fromSKIOrdered, out toSKIOrdered);
+            if (isLinkFound)
+            {
+                BezierKnot fromKnot = splineContainer.Splines[fromSKIOrdered.Spline][fromSKIOrdered.Knot];
+                BezierKnot toKnot = splineContainer.Splines[toSKIOrdered.Spline][toSKIOrdered.Knot];
+
+                BezierCurve curve = new BezierCurve(fromKnot.Position, Utils.TangentWorldPosition(fromKnot, Utils.TangentType.TangentOut), Utils.TangentWorldPosition(toKnot, Utils.TangentType.TangentIn), toKnot.Position);
+                distance = CurveUtility.ApproximateLength(curve);
+
+                return true;
+            }
+        }
+        else
+        {
+            distance = 0;
+            return true;
+        }
+        distance = -1;
+        return false;
     }
 
     public override string ToString()
