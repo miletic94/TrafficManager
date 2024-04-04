@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -10,99 +11,23 @@ public class Travel : MonoBehaviour
     [SerializeField]
     private SplineContainer splineContainer;
     private SplineAnimate splineAnimate;
-    // Start is called before the first frame update
+
     void Awake()
     {
-
-        // SplineKnot: {0, 0}, [{0, 1}, {1, 1}], [{1, 2}, {2, 1}], [{2, 2}, {3, 2}], {3, 3}
         Debug.ClearDeveloperConsole();
         splineAnimate = GetComponent<SplineAnimate>();
 
-        SplineSlice<Spline> slice0 = new SplineSlice<Spline>(roadSplineContainer.Splines[0], new SplineRange(0, 2));
-        SplineSlice<Spline> slice1 = new SplineSlice<Spline>(roadSplineContainer.Splines[1], new SplineRange(1, 2));
-        SplineSlice<Spline> slice2 = new SplineSlice<Spline>(roadSplineContainer.Splines[2], new SplineRange(1, 2));
-        SplineSlice<Spline> slice3 = new SplineSlice<Spline>(roadSplineContainer.Splines[3], new SplineRange(2, 2));
+        AStarNode startNode = new AStarNode(roadSplineContainer.KnotLinkCollection.GetKnotLinks(new SplineKnotIndex(1, 0)));
+        AStarNode endNode = new AStarNode(roadSplineContainer.KnotLinkCollection.GetKnotLinks(new SplineKnotIndex(2, 0)));
 
-        SplinePath splinePath = new SplinePath(new SplineSlice<Spline>[4] { slice0, slice1, slice2, slice3 });
+        LinkedList<AStarNode> path = ShortestPath(roadSplineContainer, startNode, endNode);
+        SplinePath splinePath = GenerateSplinePath(roadSplineContainer, GenerateSplineSliceInfo(path));
+        Spline newSpline = GenerateSpline(splinePath);
 
-        ShortestPath(roadSplineContainer, new SplineKnotIndex(1, 1), new SplineKnotIndex(3, 3));
-
-        Spline newSpline = new Spline
-        {
-            splinePath[0],
-            new BezierKnot(splinePath[1].Position, splinePath[1].TangentIn, Utils.RotateVector(splinePath[1].Rotation, splinePath[2].Rotation, splinePath[2].TangentOut), splinePath[1].Rotation),
-            new BezierKnot(splinePath[3].Position, splinePath[3].TangentIn, Utils.RotateVector(splinePath[3].Rotation, splinePath[4].Rotation, splinePath[4].TangentOut), splinePath[3].Rotation),
-            new BezierKnot(splinePath[5].Position, splinePath[5].TangentIn, Utils.RotateVector(splinePath[5].Rotation, splinePath[6].Rotation, splinePath[6].TangentOut), splinePath[5].Rotation),
-            new BezierKnot(splinePath[7].Position, splinePath[7].TangentIn, Utils.RotateVector(splinePath[7].Rotation, splinePath[8].Rotation, splinePath[8].TangentOut), splinePath[7].Rotation),
-        };
-
-        // Debug.Log(RotateVector(splinePath[0].Rotation, quaternion.identity, splinePath[0].TangentIn));
-        // Debug.Log(RotateVector(splinePath[1].Rotation, quaternion.identity, splinePath[1].TangentIn));
-
-        // Debug.Log(CurveUtility.CalculateLength(new BezierCurve(splinePath[0].Position, RotateVector(splinePath[0].Rotation, quaternion.identity, splinePath[0].TangentOut), RotateVector(splinePath[1].Rotation, quaternion.identity, splinePath[1].TangentIn), splinePath[1].Position), 4));
-
-        // BezierKnot firstKnot = roadSplineContainer.Splines[0][0];
-        // BezierKnot secondKnot = roadSplineContainer.Splines[0][1];
-        // Vector3 firstKnotTangentOutPos = TangentWorldPosition(firstKnot, TangentType.TangentOut);
-        // Vector3 secondKnotTangentInPos = TangentWorldPosition(secondKnot, TangentType.TangentIn);
-        // Debug.Log(CurveUtility.CalculateLength(new BezierCurve(firstKnot.Position, TangentWorldPosition(firstKnot, TangentType.TangentOut), TangentWorldPosition(secondKnot, TangentType.TangentIn), secondKnot.Position)));
-
-        // Debug.Log(roadSplineContainer.Splines.Count);
-        // Debug.Log(roadSplineContainer.Splines[0].Count);
-
-        // for (int i = 0; i < roadSplineContainer.Splines.Count; i++)
-        // {
-        //     for (int j = 0; j < roadSplineContainer[i].Count - 1; j++)
-        //     {
-        //         BezierKnot firstKnot = roadSplineContainer.Splines[i][j];
-        //         BezierKnot secondKnot = roadSplineContainer.Splines[i][j + 1];
-        //         BezierCurve curve = new BezierCurve(firstKnot.Position, Utils.TangentWorldPosition(firstKnot, Utils.TangentType.TangentOut), Utils.TangentWorldPosition(secondKnot, Utils.TangentType.TangentIn), secondKnot.Position);
-        //         var distance = CurveUtility.CalculateLength(curve);
-        //         Debug.Log($"SplineKnot {i}, {j} SplineKnot {i}, {j + 1} Distance {distance}");
-        //     }
-        // }
-
-        // Debug.Log($"First Knot Position: {firstKnot.Position}");
-        // Debug.Log($"First Knot Rotation: {firstKnot.Rotation}");
-        // Debug.Log($"First Knot TangentOut: {firstKnot.TangentOut}");
-        // Debug.Log($"Rotated: {RotateVector(firstKnot.Rotation, quaternion.identity, firstKnot.TangentOut)}");
-        // Debug.Log($"First Knot TangentOut Position: {firstKnotTangentOutPos}");
-
-        // Debug.Log(secondKnot.Position);
-        // Debug.Log(secondKnot.Rotation);
-        // Debug.Log(secondKnot.TangentIn);
-        // Debug.Log(secondKnotTangentInPos);
-
-        // Debug.Log(CurveUtility.ApproximateLength(new BezierCurve(firstKnot.Position, RotateVector(firstKnot.Rotation, quaternion.identity, firstKnot.TangentOut), RotateVector(secondKnot.Rotation, quaternion.identity, secondKnot.TangentIn), secondKnot.Position)));
-
-        // Debug.Log(CurveUtility.CalculateLength(new BezierCurve(firstKnot.Position, TangentWorldPosition(firstKnot, TangentType.TangentOut), TangentWorldPosition(secondKnot, TangentType.TangentIn), secondKnot.Position)));
-
-        // Debug.Log(CurveUtility.CalculateLength(new BezierCurve(firstKnot.Position, secondKnot.Position), 4));
-
-        // TestRotations();
         splineContainer.Splines = new Spline[1] { newSpline };
         splineAnimate.Container = splineContainer;
+        splineAnimate.Loop = SplineAnimate.LoopMode.PingPong;
     }
-
-
-
-    // void TestRotations()
-    // {
-    //     quaternion a0 = new quaternion(0, 0, 0, 1);
-    //     quaternion a90 = new quaternion(0.71f, 0, 0, 0.71f);
-    //     quaternion a180 = new quaternion(1, 0, 0, 0);
-    //     quaternion a270 = new quaternion(0.71f, 0, 0, -0.71f);
-
-    //     Vector3 vector = new Vector3(0, 0, 5);
-
-    //     List<quaternion> angles = new List<quaternion>()
-    //     { a0, a90, a180, a270};
-
-    //     foreach (quaternion angle in angles)
-    //     {
-    //         Debug.Log(RotateVector(angle, quaternion.identity, vector));
-    //     }
-    // }
 
     public enum TangentType
     {
@@ -110,54 +35,10 @@ public class Travel : MonoBehaviour
         TangentOut
     }
 
-    private void Start()
+    LinkedList<AStarNode> ShortestPath(SplineContainer splineContainer, AStarNode startNode, AStarNode endNode)
     {
-        // splineAnimate.Play();
-    }
 
-    // void ShortestPath(SplineKnotIndex start, SplineKnotIndex end)
-    // {
-    //     BezierKnot endKnot = roadSplineContainer[end.Spline][end.Knot];
-    //     SortedSet<SplineKnotIndexWithDistance> prioritySet = new SortedSet<SplineKnotIndexWithDistance>();
-    //     IReadOnlyList<SplineKnotIndex> knotLinkCollection = roadSplineContainer.KnotLinkCollection.GetKnotLinks(start);
-    //     SortedSet<ComparableSplineKnotIndex> visited = new SortedSet<ComparableSplineKnotIndex>();
-    // foreach (SplineKnotIndex ski in knotLinkCollection)
-    //     {
-    //         //TODO: raščlani ove špagete
-    //         Spline spline = roadSplineContainer[ski.Spline];
-
-    //         int next = ski.Knot + 1;
-    //         int prev = ski.Knot - 1;
-    //         visited.Add(new ComparableSplineKnotIndex(start));
-    //         Debug.Log(visited.Contains(new ComparableSplineKnotIndex(start)));
-    //         if (next < spline.Count)
-    //         {
-    //             BezierKnot nextKnot = spline[next];
-    //             SplineKnotIndex nextSplineKnotIndex = new SplineKnotIndex(ski.Spline, next);
-    //             float nextDistance = Vector3.Distance(nextKnot.Position, endKnot.Position);
-    //             prioritySet.Add(new SplineKnotIndexWithDistance(nextSplineKnotIndex, nextDistance));
-    //         }
-
-    //         if (prev > -1)
-    //         {
-    //             BezierKnot prevKnot = spline[prev];
-    //             SplineKnotIndex prevSplineKnotIndex = new SplineKnotIndex(ski.Spline, prev);
-    //             float prevDistance = Vector3.Distance(prevKnot.Position, endKnot.Position);
-    //             prioritySet.Add(new SplineKnotIndexWithDistance(prevSplineKnotIndex, prevDistance));
-    //         }
-    //     }
-
-    // foreach (SplineKnotIndexWithDistance skid in prioritySet)
-    // {
-    //     Debug.Log($"Spline {skid.SplineKnotIndex.Spline} Knot {skid.SplineKnotIndex.Knot} Distance: {skid.Distance}");
-    // }
-    // }
-
-    void ShortestPath(SplineContainer splineContainer, SplineKnotIndex start, SplineKnotIndex end)
-    {
-        AStarNode startNode = new AStarNode(splineContainer.KnotLinkCollection.GetKnotLinks(start));
-        AStarNode endNode = new AStarNode(splineContainer.KnotLinkCollection.GetKnotLinks(end));
-        startNode.SetCost(splineContainer, endNode);
+        startNode.SetStartNodeCost(splineContainer, endNode);
 
         HashSet<AStarNode> visited = new HashSet<AStarNode>();
         //TODO: Implement heap
@@ -168,78 +49,169 @@ public class Travel : MonoBehaviour
         while (heap.Count > 0)
         {
             AStarNode current = heap.First();
-            // Debug.Log($"CURRENT: {current}");
-            // Debug.Log($"END: {endNode}");
-
-            // SplineKnotIndex fromSKI;
-            // SplineKnotIndex toSKI;
-            // var isFound = current.TryFindKnotLinkToNode(splineContainer, startNode, out fromSKI, out toSKI);
-            // if (isFound)
-            // {
-            //     Debug.Log($"FROMSpline {fromSKI.Spline} FROMKnot {fromSKI.Knot} \n TOSpline {toSKI.Spline} TOKnot {toSKI.Knot}");
-            // }
-            //
-            // SplineKnotIndex fromSKI2;
-            // SplineKnotIndex toSKI2;
-            // var isFound2 = current.TryFindKnotLinkToNode(splineContainer, endNode, out fromSKI2, out toSKI2);
-            // if (isFound2)
-            // {
-            //     Debug.Log($"FROMSpline {fromSKI2.Spline} FROMKnot {fromSKI2.Knot} \n TOSpline {toSKI2.Spline} TOKnot {toSKI2.Knot}");
-            // }
-            if (current.Equals(endNode))
-            {
-                // ShowVisited(visited);
-                return;
-            }
             heap.Remove(current);
             visited.Add(current);
+
+            if (current.Equals(endNode))
+            {
+                LinkedList<AStarNode> path = GeneratePath(current);
+                return path;
+            }
+
             HashSet<AStarNode> neighbors = current.GetNeighbors(splineContainer);
             foreach (AStarNode n in neighbors)
             {
-                //TODO: Put this inside of if statement bellow
-                // 1. Calculate cost
-                n.SetCost(splineContainer, current, endNode);
-                // 2. If neighbor isn't in visited add neighbor to heap.
-                // TODO: If neighbor is nearer when it comes from this parent then from the previous, change it's parent and fCost, gCost and hCost;
+
                 if (!visited.Contains(n))
                 {
-                    heap.Add(n);
+                    AStarNode heapN;
+                    bool heapContainsN = heap.TryGetValue(n, out heapN);
+
+                    SplineKnotIndex currentSKI, parentSKI;
+                    bool isLinkedToCurrent = n.TryFindSKIConnectionToNode(splineContainer, current, out currentSKI, out parentSKI);
+                    if (!isLinkedToCurrent) throw new Exception("Potential neighbor is not linked to parent");
+
+                    AStarNode.ParentConnection parentConnection = new AStarNode.ParentConnection(currentSKI, parentSKI);
+                    float fCost, gCost, hCost;
+
+                    n.ComputeCost(splineContainer, current, endNode, parentConnection, out gCost, out hCost);
+                    fCost = gCost + hCost;
+
+                    if (heapContainsN)
+                    {
+                        if (heapN.fCost > fCost)
+                        {
+                            heapN.gCost = gCost;
+                            heapN.hCost = hCost;
+                            heapN.parent = current;
+                            heapN.SetParentConnection(parentConnection);
+                        }
+                    }
+                    else
+                    {
+                        n.gCost = gCost;
+                        n.hCost = hCost;
+                        n.parent = current;
+                        n.SetParentConnection(parentConnection);
+                        heap.Add(n);
+                    }
                 }
             }
         }
 
-        // foreach (AStarNode n in heap)
-        // {
-        //     Debug.Log($"HEAP: {n}");
-        // }
+        throw new Exception($"There is no path between node with SKI {startNode} and {endNode}");
     }
-    void ShowVisited(HashSet<AStarNode> visited)
+
+    // TODO: Create Path class or interface in order to use it here and in GenerateSplinePath as a type.
+    LinkedList<AStarNode> GeneratePath(AStarNode endNode)
     {
-        // visited.Add(new AStarNode(splineContainer.KnotLinkCollection.GetKnotLinks(new SplineKnotIndex(1, 2))));
-        foreach (AStarNode n in visited)
+        LinkedList<AStarNode> path = new LinkedList<AStarNode>();
+        AStarNode current = endNode;
+
+        path.AddFirst(current);
+
+        while (current.parent != null)
         {
-            Debug.Log($"VISITED: {n}");
+            current = current.parent;
+            path.AddFirst(current);
+        }
+        return path;
+    }
+
+
+    // TODO: Use Path here as a type.
+    List<SplineSliceInfo> GenerateSplineSliceInfo(LinkedList<AStarNode> path)
+    {
+        List<SplineSliceInfo> splineSliceInfoList = new List<SplineSliceInfo>();
+        int previousSplineIndex = -1;
+        SliceDirection previousDirection = SliceDirection.Forward;
+        while (path.Count > 0)
+        {
+            AStarNode currentNode = path.FirstOrDefault(); // since count > 0 this should always have value;
+            SplineKnotIndex currentSKI = currentNode.parentConnection.CurrentSKI;
+            SplineKnotIndex parentSKI = currentNode.parentConnection.ParentSKI;
+
+            SliceDirection currentDirection = parentSKI.Knot < currentSKI.Knot ? SliceDirection.Forward : SliceDirection.Backward;
+            if (currentSKI.IsValid() && parentSKI.IsValid())
+            {
+                int currentSplineIndex = parentSKI.Spline; // currentSKI.SPline would be the same
+                // TODO: Test change of the direction when that becomes possible
+                if (currentSplineIndex != previousSplineIndex || currentDirection != previousDirection)
+                {
+                    previousSplineIndex = currentSplineIndex;
+                    previousDirection = currentDirection;
+                    SplineSliceInfo currentSplineSliceInfo = new SplineSliceInfo(currentSplineIndex, parentSKI.Knot, 2, currentDirection); // Here only parentSKI.Knot would be valid
+                    splineSliceInfoList.Add(currentSplineSliceInfo);
+                }
+                else
+                {
+                    int lastSliceIndex = splineSliceInfoList.Count - 1;
+                    SplineSliceInfo lastSliceInfo = splineSliceInfoList[lastSliceIndex];
+                    lastSliceInfo.KnotsCount += 1;
+                }
+            }
+
+            path.RemoveFirst();
+        }
+        return splineSliceInfoList;
+    }
+
+    SplinePath GenerateSplinePath(SplineContainer splineContainer, List<SplineSliceInfo> splineSliceInfos)
+    {
+        List<SplineSlice<Spline>> splinePathSlices = new List<SplineSlice<Spline>>();
+
+        foreach (SplineSliceInfo ssi in splineSliceInfos)
+        {
+            splinePathSlices.Add(new SplineSlice<Spline>(splineContainer.Splines[ssi.SplineIndex], new SplineRange(ssi.StartingKnot, ssi.KnotsCount, ssi.Direction)));
+        }
+
+        return new SplinePath(splinePathSlices);
+    }
+
+    Spline GenerateSpline(SplinePath splinePath, bool closed = false)
+    {
+        List<BezierKnot> splineKnots = new List<BezierKnot>();
+
+        for (int i = 0; i < splinePath.Count; i++)
+        {
+
+            // Knots belong to the same node (They are of the same position)
+            if ((Vector3)splinePath[i].Position == (Vector3)splinePath[i + 1].Position)
+            {
+                BezierKnot firstKnot = splinePath[i];
+                BezierKnot secondKnot = splinePath[i + 1];
+                BezierKnot newKnot = new BezierKnot(firstKnot.Position, firstKnot.TangentIn, Utils.RotateVector(firstKnot.Rotation, secondKnot.Rotation, secondKnot.TangentOut), firstKnot.Rotation);
+                splineKnots.Add(newKnot);
+
+                i++; // SKip next knot since this and next knot will belong to the same node. If knots belong to the same node, that means that we need to use 
+            }
+            else
+            {
+                splineKnots.Add(splinePath[i]);
+            }
+        }
+        return new Spline(splineKnots, closed);
+    }
+
+    class SplineSliceInfo
+    {
+        public int SplineIndex;
+        public int StartingKnot;
+        public int KnotsCount;
+        public SliceDirection Direction;
+
+
+        public SplineSliceInfo(int splineIndex, int startingKnot, int knotsCount, SliceDirection direction)
+        {
+            SplineIndex = splineIndex;
+            StartingKnot = startingKnot;
+            KnotsCount = knotsCount;
+            Direction = direction;
+        }
+
+        public override string ToString()
+        {
+            return $"SplineIndex {SplineIndex} StartingKnot {StartingKnot} Count {KnotsCount}";
         }
     }
 }
-
-// class SplineKnotIndexWithDistance : IComparable<SplineKnotIndexWithDistance>
-// {
-//     SplineKnotIndex k_SplineKnotIndex;
-//     float k_Distance;
-
-//     public SplineKnotIndexWithDistance(SplineKnotIndex splineKnotIndex, float distance)
-//     {
-//         k_SplineKnotIndex = splineKnotIndex;
-//         k_Distance = distance;
-//     }
-
-//     public SplineKnotIndex SplineKnotIndex => k_SplineKnotIndex;
-
-//     public float Distance => k_Distance;
-
-//     public int CompareTo(SplineKnotIndexWithDistance other)
-//     {
-//         return this.k_Distance.CompareTo(other.k_Distance);
-//     }
-// }
