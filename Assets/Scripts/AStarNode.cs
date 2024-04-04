@@ -214,6 +214,13 @@ public class AStarNode : IEquatable<AStarNode>, IComparable<AStarNode>
 
     public int CompareTo(AStarNode other)
     {
-        return fCost.CompareTo(other.fCost);
+        int fCostComparison = fCost.CompareTo(other.fCost);
+        if (fCostComparison != 0)
+        {
+            return fCostComparison;
+        }
+
+        var SKIComparer = new Comparers.SplineKnotIndexComparer.SplineKnotIndexComparer();
+        return SKIComparer.Compare(KnotLinksSet.First(), other.KnotLinksSet.First()); // Since KnotLinkSet is SortedSet, if KnotLinkSet.First() is equal, then KnotLinkSets will be equal
     }
 }
