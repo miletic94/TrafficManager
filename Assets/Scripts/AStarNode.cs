@@ -4,6 +4,7 @@ using System.Linq;
 using UnityEngine;
 using UnityEngine.Splines;
 
+// TODO: Move this from here
 public class KnotLinksEqualityComparer : IEqualityComparer<SortedSet<SplineKnotIndex>>
 {
     public int GetHashCode(SortedSet<SplineKnotIndex> x)
@@ -73,25 +74,51 @@ public class AStarNode : IEquatable<AStarNode>, IComparable<AStarNode>
     public float hCost { get; set; }
     public AStarNode parent;
 
-    // TODO: Maybe make this class
-    public (SplineKnotIndex currentSKI, SplineKnotIndex parentSKI) parentCurrentSKIConnection;
+    public ParentConnection parentConnection;
 
     public SortedSet<SplineKnotIndex> KnotLinksSet { get; }
+
+    public class ParentConnection
+    {
+        public SplineKnotIndex CurrentSKI;
+
+        public SplineKnotIndex ParentSKI;
+
+        public ParentConnection()
+        {
+            CurrentSKI = SplineKnotIndex.Invalid;
+            ParentSKI = SplineKnotIndex.Invalid;
+        }
+
+        public ParentConnection(SplineKnotIndex currentSKI, SplineKnotIndex parentSKI)
+        {
+            CurrentSKI = currentSKI;
+            ParentSKI = parentSKI;
+        }
+    }
     public AStarNode(IReadOnlyList<SplineKnotIndex> knotLinks)
     {
         KnotLinksSet = SetKnotLinks(knotLinks);
         gCost = float.PositiveInfinity;
         hCost = float.NegativeInfinity;
+        parentConnection = new ParentConnection();
     }
 
     private SortedSet<SplineKnotIndex> SetKnotLinks(IReadOnlyList<SplineKnotIndex> knotLinks)
     {
+        if (knotLinks.Count < 1) throw new Exception("KnotLinksSet is empty");
         SortedSet<SplineKnotIndex> set = new SortedSet<SplineKnotIndex>(new SplineKnotIndexComparer());
         foreach (SplineKnotIndex ski in knotLinks)
         {
             set.Add(ski);
         }
         return set;
+    }
+
+    public void SetParentConnection(ParentConnection parentConnection)
+    {
+        this.parentConnection.CurrentSKI = parentConnection.CurrentSKI;
+        this.parentConnection.ParentSKI = parentConnection.ParentSKI;
     }
 
     public void SetStartNodeCost(SplineContainer splineContainer, AStarNode endNode)
@@ -103,9 +130,9 @@ public class AStarNode : IEquatable<AStarNode>, IComparable<AStarNode>
     }
 
     // Compute fCost for node that has parent (is not starting node)
-    public void ComputeCost(SplineContainer splineContainer, AStarNode parentNode, AStarNode endNode, (SplineKnotIndex fromSKI, SplineKnotIndex toSKI) parentCurrentNodeSKIConnection, out float gCost, out float hCost)
+    public void ComputeCost(SplineContainer splineContainer, AStarNode parentNode, AStarNode endNode, ParentConnection parentConnection, out float gCost, out float hCost)
     {
-        float distanceToParent = GetDistanceBySKIConnections(splineContainer, parentCurrentNodeSKIConnection.fromSKI, parentCurrentNodeSKIConnection.toSKI);
+        float distanceToParent = GetDistanceBySKIConnections(splineContainer, parentConnection.CurrentSKI, parentConnection.ParentSKI);
 
         gCost = parentNode.gCost + distanceToParent;
         hCost = GetHCost(splineContainer, endNode);
@@ -149,48 +176,48 @@ public class AStarNode : IEquatable<AStarNode>, IComparable<AStarNode>
         return neighbors;
     }
 
-    public bool TryFindSKILinkToNode(SplineContainer splineContainer, AStarNode otherNode, out SplineKnotIndex fromSKI, out SplineKnotIndex toSKI)
+    public bool TryFindSKIConnectionToNode(SplineContainer splineContainer, AStarNode otherNode, out SplineKnotIndex currentSKI, out SplineKnotIndex otherSKI)
     {
         if (!this.Equals(otherNode))
         {
-            foreach (SplineKnotIndex ski in KnotLinksSet)
+            foreach (SplineKnotIndex processingSKICurrent in KnotLinksSet)
             {
-                Spline spline = splineContainer[ski.Spline];
-                int nextKnot = ski.Knot + 1;
-                int prevKnot = ski.Knot - 1;
+                Spline spline = splineContainer[processingSKICurrent.Spline];
+                int nextKnot = processingSKICurrent.Knot + 1;
+                int prevKnot = processingSKICurrent.Knot - 1;
 
                 if (prevKnot >= 0)
                 {
-                    SplineKnotIndex SKI;
-                    bool isFound = otherNode.KnotLinksSet.TryGetValue(new SplineKnotIndex(ski.Spline, prevKnot), out SKI);
+                    SplineKnotIndex processingSKIOther;
+                    bool isFound = otherNode.KnotLinksSet.TryGetValue(new SplineKnotIndex(processingSKICurrent.Spline, prevKnot), out processingSKIOther);
 
                     if (isFound)
                     {
-                        fromSKI = ski;
-                        toSKI = SKI;
+                        currentSKI = processingSKICurrent;
+                        otherSKI = processingSKIOther;
                         return true;
                     }
                 }
                 if (nextKnot < spline.Count)
                 {
-                    SplineKnotIndex SKI;
-                    bool isFound = otherNode.KnotLinksSet.TryGetValue(new SplineKnotIndex(ski.Spline, nextKnot), out SKI);
+                    SplineKnotIndex processingSKIOther;
+                    bool isFound = otherNode.KnotLinksSet.TryGetValue(new SplineKnotIndex(processingSKICurrent.Spline, nextKnot), out processingSKIOther);
 
                     if (isFound)
                     {
-                        fromSKI = ski;
-                        toSKI = SKI;
+                        currentSKI = processingSKICurrent;
+                        otherSKI = processingSKIOther;
                         return true;
                     }
                 }
             }
-            fromSKI = SplineKnotIndex.Invalid;
-            toSKI = SplineKnotIndex.Invalid;
+            currentSKI = SplineKnotIndex.Invalid;
+            otherSKI = SplineKnotIndex.Invalid;
             return false;
         }
-        // TODO: .First() is not safe. It could fail if Set is empty. It is also magic value.
-        fromSKI = KnotLinksSet.First();
-        toSKI = KnotLinksSet.First();
+        SplineKnotIndex anySKI = KnotLinksSet.First(); // If nodes are the same any knot will work and it will connect to itself
+        currentSKI = anySKI;
+        otherSKI = anySKI;
         return true;
     }
 
@@ -226,7 +253,7 @@ public class AStarNode : IEquatable<AStarNode>, IComparable<AStarNode>
         {
             s += $"Spline: {ski.Spline}, Knot: {ski.Knot} ";
         }
-        s += $"\n gCost: {gCost}, hCost: {hCost}, fCost: {gCost + hCost} currentSKI {parentCurrentSKIConnection.currentSKI} parentSKI {parentCurrentSKIConnection.parentSKI}";
+        s += $"\n gCost: {gCost}, hCost: {hCost}, fCost: {gCost + hCost} currentSKI {parentConnection.CurrentSKI} parentSKI {parentConnection.ParentSKI}";
 
         return s;
     }

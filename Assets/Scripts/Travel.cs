@@ -39,7 +39,6 @@ public class Travel : MonoBehaviour
     {
 
         startNode.SetStartNodeCost(splineContainer, endNode);
-        startNode.parentCurrentSKIConnection = (SplineKnotIndex.Invalid, SplineKnotIndex.Invalid);
 
         HashSet<AStarNode> visited = new HashSet<AStarNode>();
         //TODO: Implement heap
@@ -69,12 +68,13 @@ public class Travel : MonoBehaviour
                     bool heapContainsN = heap.TryGetValue(n, out heapN);
 
                     SplineKnotIndex currentSKI, parentSKI;
-                    bool isLinkedToCurrent = n.TryFindSKILinkToNode(splineContainer, current, out currentSKI, out parentSKI);
+                    bool isLinkedToCurrent = n.TryFindSKIConnectionToNode(splineContainer, current, out currentSKI, out parentSKI);
                     if (!isLinkedToCurrent) throw new Exception("Potential neighbor is not linked to parent");
 
+                    AStarNode.ParentConnection parentConnection = new AStarNode.ParentConnection(currentSKI, parentSKI);
                     float fCost, gCost, hCost;
 
-                    n.ComputeCost(splineContainer, current, endNode, (currentSKI, parentSKI), out gCost, out hCost);
+                    n.ComputeCost(splineContainer, current, endNode, parentConnection, out gCost, out hCost);
                     fCost = gCost + hCost;
 
                     if (heapContainsN)
@@ -84,7 +84,7 @@ public class Travel : MonoBehaviour
                             heapN.gCost = gCost;
                             heapN.hCost = hCost;
                             heapN.parent = current;
-                            heapN.parentCurrentSKIConnection = (currentSKI, parentSKI);
+                            heapN.SetParentConnection(parentConnection);
                         }
                     }
                     else
@@ -92,7 +92,7 @@ public class Travel : MonoBehaviour
                         n.gCost = gCost;
                         n.hCost = hCost;
                         n.parent = current;
-                        n.parentCurrentSKIConnection = (currentSKI, parentSKI);
+                        n.SetParentConnection(parentConnection);
                         heap.Add(n);
                     }
                 }
@@ -128,10 +128,10 @@ public class Travel : MonoBehaviour
         while (path.Count > 0)
         {
             AStarNode currentNode = path.FirstOrDefault(); // since count > 0 this should always have value;
-            SplineKnotIndex currentSKI = currentNode.parentCurrentSKIConnection.currentSKI;
-            SplineKnotIndex parentSKI = currentNode.parentCurrentSKIConnection.parentSKI;
-            SliceDirection currentDirection = parentSKI.Knot < currentSKI.Knot ? SliceDirection.Forward : SliceDirection.Backward;
+            SplineKnotIndex currentSKI = currentNode.parentConnection.CurrentSKI;
+            SplineKnotIndex parentSKI = currentNode.parentConnection.ParentSKI;
 
+            SliceDirection currentDirection = parentSKI.Knot < currentSKI.Knot ? SliceDirection.Forward : SliceDirection.Backward;
             if (currentSKI.IsValid() && parentSKI.IsValid())
             {
                 int currentSplineIndex = parentSKI.Spline; // currentSKI.SPline would be the same
