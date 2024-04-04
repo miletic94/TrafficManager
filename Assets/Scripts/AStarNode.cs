@@ -3,70 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.Splines;
+using Comparers;
 
-// TODO: Move this from here
-public class KnotLinksEqualityComparer : IEqualityComparer<SortedSet<SplineKnotIndex>>
-{
-    public int GetHashCode(SortedSet<SplineKnotIndex> x)
-    {
-        List<int> hashes = new List<int>();
-        int sumHash = 0;
-        foreach (SplineKnotIndex ski in x)
-        {
-            hashes.Add(ski.GetHashCode());
-        }
-
-        // Multiply each ski hash with each ski hash
-        for (int i = 0; i <= hashes.Count - 1; i++)
-        {
-            for (int j = i + 1; j <= hashes.Count; j++)
-            {
-                if (j == hashes.Count)
-                {
-                    sumHash += hashes[i] * 1;
-                }
-                else
-                {
-                    sumHash += hashes[i] * hashes[j];
-                }
-            }
-        }
-        return sumHash;
-    }
-    public bool Equals(SortedSet<SplineKnotIndex> x, SortedSet<SplineKnotIndex> y)
-    {
-
-        foreach (SplineKnotIndex ski in x)
-        {
-            if (!y.Contains(ski))
-            {
-                return false;
-            }
-        }
-        return true;
-    }
-}
-
-public class SplineKnotIndexComparer : IComparer<SplineKnotIndex>
-{
-    public int Compare(SplineKnotIndex x, SplineKnotIndex y)
-    {
-        if (x.Spline < y.Spline)
-            return -1;
-        else if (x.Spline > y.Spline)
-            return 1;
-        else
-        {
-            // If Spline values are equal, compare Knot values
-            if (x.Knot < y.Knot)
-                return -1;
-            else if (x.Knot > y.Knot)
-                return 1;
-            else
-                return 0; // SKIs are equal
-        }
-    }
-}
 public class AStarNode : IEquatable<AStarNode>, IComparable<AStarNode>
 {
     public float fCost { get => gCost + hCost; }
@@ -107,7 +45,7 @@ public class AStarNode : IEquatable<AStarNode>, IComparable<AStarNode>
     private SortedSet<SplineKnotIndex> SetKnotLinks(IReadOnlyList<SplineKnotIndex> knotLinks)
     {
         if (knotLinks.Count < 1) throw new Exception("KnotLinksSet is empty");
-        SortedSet<SplineKnotIndex> set = new SortedSet<SplineKnotIndex>(new SplineKnotIndexComparer());
+        SortedSet<SplineKnotIndex> set = new SortedSet<SplineKnotIndex>(new Comparers.SplineKnotIndexComparer.SplineKnotIndexComparer());
         foreach (SplineKnotIndex ski in knotLinks)
         {
             set.Add(ski);
@@ -260,7 +198,7 @@ public class AStarNode : IEquatable<AStarNode>, IComparable<AStarNode>
 
     public override int GetHashCode()
     {
-        var comparer = new KnotLinksEqualityComparer();
+        var comparer = new Comparers.KnotLinkSetComparer.KnotLinkSetEqualityComparer();
 
         return comparer.GetHashCode(KnotLinksSet);
     }
@@ -271,7 +209,7 @@ public class AStarNode : IEquatable<AStarNode>, IComparable<AStarNode>
         {
             return false;
         }
-        var comparer = new KnotLinksEqualityComparer();
+        var comparer = new Comparers.KnotLinkSetComparer.KnotLinkSetEqualityComparer();
         return comparer.Equals(KnotLinksSet, other.KnotLinksSet);
     }
 

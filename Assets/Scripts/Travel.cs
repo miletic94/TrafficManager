@@ -17,11 +17,11 @@ public class Travel : MonoBehaviour
         Debug.ClearDeveloperConsole();
         splineAnimate = GetComponent<SplineAnimate>();
 
-        AStarNode startNode = new AStarNode(splineContainer.KnotLinkCollection.GetKnotLinks(new SplineKnotIndex(1, 0)));
+        AStarNode startNode = new AStarNode(splineContainer.KnotLinkCollection.GetKnotLinks(new SplineKnotIndex(0, 0)));
         AStarNode endNode = new AStarNode(splineContainer.KnotLinkCollection.GetKnotLinks(new SplineKnotIndex(3, 3)));
 
         LinkedList<AStarNode> path = ShortestPath(roadSplineContainer, startNode, endNode);
-        SplinePath splinePath = GenerateSplinePath(roadSplineContainer, path);
+        SplinePath splinePath = GenerateSplinePath(roadSplineContainer, GenerateSplineSliceInfo(path));
         Spline newSpline = GenerateSpline(splinePath);
 
         splineContainer.Splines = new Spline[1] { newSpline };
@@ -98,8 +98,8 @@ public class Travel : MonoBehaviour
                 }
             }
         }
-        // TODO: Does this need to be handled?
-        return new LinkedList<AStarNode>();
+
+        throw new Exception($"There is no path between node with SKI {startNode} and {endNode}");
     }
 
     // TODO: Create Path class or interface in order to use it here and in GenerateSplinePath as a type.
@@ -118,11 +118,11 @@ public class Travel : MonoBehaviour
         return path;
     }
 
+
     // TODO: Use Path here as a type.
-    SplinePath GenerateSplinePath(SplineContainer splineContainer, LinkedList<AStarNode> path)
+    List<SplineSliceInfo> GenerateSplineSliceInfo(LinkedList<AStarNode> path)
     {
-        // TODO: Split this into two. This could be GenerateSplineSliceInfo
-        List<SplineSliceInfo> slicesInfo = new List<SplineSliceInfo>();
+        List<SplineSliceInfo> splineSliceInfoList = new List<SplineSliceInfo>();
         int previousSplineIndex = -1;
         SliceDirection previousDirection = SliceDirection.Forward;
         while (path.Count > 0)
@@ -141,26 +141,26 @@ public class Travel : MonoBehaviour
                     previousSplineIndex = currentSplineIndex;
                     previousDirection = currentDirection;
                     SplineSliceInfo currentSplineSliceInfo = new SplineSliceInfo(currentSplineIndex, parentSKI.Knot, 2, currentDirection); // Here only parentSKI.Knot would be valid
-                    slicesInfo.Add(currentSplineSliceInfo);
+                    splineSliceInfoList.Add(currentSplineSliceInfo);
                 }
                 else
                 {
-                    // TODO: Is there better way? 
-                    // Yes. Make SplineSliceInfo class instead of struct
-                    int lastSliceIndex = slicesInfo.Count - 1;
-                    SplineSliceInfo lastSliceInfo = slicesInfo[lastSliceIndex];
+                    int lastSliceIndex = splineSliceInfoList.Count - 1;
+                    SplineSliceInfo lastSliceInfo = splineSliceInfoList[lastSliceIndex];
                     lastSliceInfo.KnotsCount += 1;
-                    slicesInfo[lastSliceIndex] = lastSliceInfo;
                 }
             }
 
             path.RemoveFirst();
         }
+        return splineSliceInfoList;
+    }
 
-        // TODO: This could be generate SplinePath
+    SplinePath GenerateSplinePath(SplineContainer splineContainer, List<SplineSliceInfo> splineSliceInfos)
+    {
         List<SplineSlice<Spline>> splinePathSlices = new List<SplineSlice<Spline>>();
 
-        foreach (SplineSliceInfo ssi in slicesInfo)
+        foreach (SplineSliceInfo ssi in splineSliceInfos)
         {
             splinePathSlices.Add(new SplineSlice<Spline>(splineContainer.Splines[ssi.SplineIndex], new SplineRange(ssi.StartingKnot, ssi.KnotsCount, ssi.Direction)));
         }
@@ -193,7 +193,7 @@ public class Travel : MonoBehaviour
         return new Spline(splineKnots, closed);
     }
 
-    struct SplineSliceInfo
+    class SplineSliceInfo
     {
         public int SplineIndex;
         public int StartingKnot;
