@@ -17,8 +17,8 @@ public class Travel : MonoBehaviour
         Debug.ClearDeveloperConsole();
         splineAnimate = GetComponent<SplineAnimate>();
 
-        AStarNode startNode = new AStarNode(splineContainer.KnotLinkCollection.GetKnotLinks(new SplineKnotIndex(0, 0)));
-        AStarNode endNode = new AStarNode(splineContainer.KnotLinkCollection.GetKnotLinks(new SplineKnotIndex(3, 3)));
+        AStarNode startNode = new AStarNode(roadSplineContainer.KnotLinkCollection.GetKnotLinks(new SplineKnotIndex(1, 0)));
+        AStarNode endNode = new AStarNode(roadSplineContainer.KnotLinkCollection.GetKnotLinks(new SplineKnotIndex(3, 3)));
 
         LinkedList<AStarNode> path = ShortestPath(roadSplineContainer, startNode, endNode);
         SplinePath splinePath = GenerateSplinePath(roadSplineContainer, GenerateSplineSliceInfo(path));

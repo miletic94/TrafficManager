@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Splines;
-using Comparers;
 
 public class AStarNode : IEquatable<AStarNode>, IComparable<AStarNode>
 {
@@ -174,8 +174,7 @@ public class AStarNode : IEquatable<AStarNode>, IComparable<AStarNode>
 
         BezierKnot fromKnot = splineContainer.Splines[fromSKIOrdered.Spline][fromSKIOrdered.Knot];
         BezierKnot toKnot = splineContainer.Splines[toSKIOrdered.Spline][toSKIOrdered.Knot];
-
-        BezierCurve curve = new BezierCurve(fromKnot.Position, Utils.TangentWorldPosition(fromKnot, Utils.TangentType.TangentOut), Utils.TangentWorldPosition(toKnot, Utils.TangentType.TangentIn), toKnot.Position);
+        BezierCurve curve = new BezierCurve(fromKnot.Position, toKnot.Position);
 
         if (approximate)
         {

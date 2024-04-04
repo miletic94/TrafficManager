@@ -10,25 +10,21 @@ public static class Utils
         TangentIn,
         TangentOut
     }
-    // Probably redundant 
-    // TODO: (Try by creating BezierCurve with BezierKnots as arguments.)
-    public static Vector3 TangentWorldPosition(BezierKnot knot, TangentType tangentType)
-    {
-        float3 tangentPosition = tangentType == TangentType.TangentIn ? knot.TangentIn : knot.TangentOut;
-        // TODO: Why this works and RotateVector(knto.Rotation, quaternion.identity, tangetnPosition) doesn't?
-        return (Vector3)knot.Position + RotateVector(quaternion.identity, knot.Rotation, tangentPosition);
-    }
 
+    /// <summary>
+    /// Rotate a vector from its orientation specified by a starting quaternion to a new orientation specified by a target quaternion.
+    /// </summary>
+    /// <param name="fromQuaternion">The starting rotation quaternion.</param>
+    /// <param name="toQuaternion">The target rotation quaternion.</param>
+    /// <param name="vector">The vector to be rotated.</param>
+    /// <returns>The rotated vector.</returns>
     public static Vector3 RotateVector(quaternion fromQuaternion, quaternion toQuaternion, Vector3 vector)
     {
-        quaternion q1 = fromQuaternion;
-        quaternion q2 = toQuaternion;
-        quaternion q1conj = math.conjugate(q1);
+        // Get the rotation from "fromQuaternion" to "toQuaternion"
+        Quaternion rotation = toQuaternion * Quaternion.Inverse(fromQuaternion);
 
-        quaternion q = math.mul(q2, q1conj);
-        Matrix4x4 rotation = Matrix4x4.Rotate(q);
-
-        return rotation.MultiplyPoint(vector);
+        // Rotate the vector using the calculated rotation
+        return rotation * vector;
     }
 
     public static void OrderSKIsByKnot(SplineKnotIndex x, SplineKnotIndex y, out SplineKnotIndex first, out SplineKnotIndex second)
