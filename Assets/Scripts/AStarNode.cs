@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Splines;
 
@@ -11,6 +10,7 @@ public class AStarNode : IEquatable<AStarNode>, IComparable<AStarNode>
     public float gCost { get; set; }
     public float hCost { get; set; }
     public AStarNode parent;
+    public SplineContainer SplineContainer;
 
     public ParentConnection parentConnection;
 
@@ -34,9 +34,10 @@ public class AStarNode : IEquatable<AStarNode>, IComparable<AStarNode>
             ParentSKI = parentSKI;
         }
     }
-    public AStarNode(IReadOnlyList<SplineKnotIndex> knotLinks)
+    public AStarNode(SplineContainer splineContainer, SplineKnotIndex splineKnotIndex)
     {
-        KnotLinksSet = SetKnotLinks(knotLinks);
+        SplineContainer = splineContainer;
+        KnotLinksSet = SetKnotLinks(splineContainer.KnotLinkCollection.GetKnotLinks(splineKnotIndex));
         gCost = float.PositiveInfinity;
         hCost = float.NegativeInfinity;
         parentConnection = new ParentConnection();
@@ -59,68 +60,68 @@ public class AStarNode : IEquatable<AStarNode>, IComparable<AStarNode>
         this.parentConnection.ParentSKI = parentConnection.ParentSKI;
     }
 
-    public void SetStartNodeCost(SplineContainer splineContainer, AStarNode endNode)
+    public void SetStartNodeCost(AStarNode endNode)
     {
         float gCost, hCost;
-        ComputeCost(splineContainer, endNode, out gCost, out hCost);
+        ComputeCost(endNode, out gCost, out hCost);
         this.gCost = gCost;
         this.hCost = hCost;
     }
 
     // Compute fCost for node that has parent (is not starting node)
-    public void ComputeCost(SplineContainer splineContainer, AStarNode parentNode, AStarNode endNode, ParentConnection parentConnection, out float gCost, out float hCost)
+    public void ComputeCost(AStarNode parentNode, AStarNode endNode, ParentConnection parentConnection, out float gCost, out float hCost)
     {
-        float distanceToParent = GetDistanceBySKIConnections(splineContainer, parentConnection.CurrentSKI, parentConnection.ParentSKI);
+        float distanceToParent = GetDistanceBySKIConnections(parentConnection.CurrentSKI, parentConnection.ParentSKI);
 
         gCost = parentNode.gCost + distanceToParent;
-        hCost = GetHCost(splineContainer, endNode);
+        hCost = GetHCost(endNode);
     }
 
     // Compute fCost for the start node
-    public void ComputeCost(SplineContainer splineContainer, AStarNode endNode, out float gCost, out float hCost)
+    public void ComputeCost(AStarNode endNode, out float gCost, out float hCost)
     {
         gCost = 0;
-        hCost = GetHCost(splineContainer, endNode);
+        hCost = GetHCost(endNode);
     }
 
-    float GetHCost(SplineContainer splineContainer, AStarNode endNode)
+    float GetHCost(AStarNode endNode)
     {
-        BezierKnot endKnot = splineContainer[endNode.KnotLinksSet.First().Spline][endNode.KnotLinksSet.First().Knot];
-        BezierKnot currentKnot = splineContainer[KnotLinksSet.First().Spline][KnotLinksSet.First().Knot];
+        BezierKnot endKnot = SplineContainer[endNode.KnotLinksSet.First().Spline][endNode.KnotLinksSet.First().Knot];
+        BezierKnot currentKnot = SplineContainer[KnotLinksSet.First().Spline][KnotLinksSet.First().Knot];
 
         return Vector3.Distance(currentKnot.Position, endKnot.Position);
     }
 
-    public HashSet<AStarNode> GetNeighbors(SplineContainer splineContainer)
+    public HashSet<AStarNode> GetNeighbors()
     {
         HashSet<AStarNode> neighbors = new HashSet<AStarNode>();
         foreach (SplineKnotIndex splineKnotIndex in KnotLinksSet)
         {
-            Spline spline = splineContainer[splineKnotIndex.Spline];
+            Spline spline = SplineContainer[splineKnotIndex.Spline];
             int nextKnotIndex = splineKnotIndex.Knot + 1;
             int prevKnotIndex = splineKnotIndex.Knot - 1;
             if (nextKnotIndex < spline.Count)
             {
                 SplineKnotIndex nextSplineKnotIndex = new SplineKnotIndex(splineKnotIndex.Spline, nextKnotIndex);
-                neighbors.Add(new AStarNode(splineContainer.KnotLinkCollection.GetKnotLinks(nextSplineKnotIndex)));
+                neighbors.Add(new AStarNode(SplineContainer, nextSplineKnotIndex));
             }
 
             if (prevKnotIndex > -1)
             {
                 SplineKnotIndex prevSplineKnotIndex = new SplineKnotIndex(splineKnotIndex.Spline, prevKnotIndex);
-                neighbors.Add(new AStarNode(splineContainer.KnotLinkCollection.GetKnotLinks(prevSplineKnotIndex)));
+                neighbors.Add(new AStarNode(SplineContainer, prevSplineKnotIndex));
             }
         }
         return neighbors;
     }
 
-    public bool TryFindSKIConnectionToNode(SplineContainer splineContainer, AStarNode otherNode, out SplineKnotIndex currentSKI, out SplineKnotIndex otherSKI)
+    public bool TryFindSKIConnectionToNode(AStarNode otherNode, out SplineKnotIndex currentSKI, out SplineKnotIndex otherSKI)
     {
         if (!this.Equals(otherNode))
         {
             foreach (SplineKnotIndex processingSKICurrent in KnotLinksSet)
             {
-                Spline spline = splineContainer[processingSKICurrent.Spline];
+                Spline spline = SplineContainer[processingSKICurrent.Spline];
                 int nextKnot = processingSKICurrent.Knot + 1;
                 int prevKnot = processingSKICurrent.Knot - 1;
 
@@ -162,7 +163,7 @@ public class AStarNode : IEquatable<AStarNode>, IComparable<AStarNode>
     // Use approximate to switch algorithm by which curve length is calculated.
     // approximate = false will use CurveUtility.CalculateLength which is more precise, but slower. Here resolution parameter is used as precision measure.
     // approximate = true will use CurveUtility.ApproximateLength which is faster, but less precise.
-    public float GetDistanceBySKIConnections(SplineContainer splineContainer, SplineKnotIndex fromSKI, SplineKnotIndex toSKI, bool approximate = false, int resolution = 30)
+    public float GetDistanceBySKIConnections(SplineKnotIndex fromSKI, SplineKnotIndex toSKI, bool approximate = false, int resolution = 30)
     {
         if (fromSKI.Equals(toSKI))
         {
@@ -172,8 +173,8 @@ public class AStarNode : IEquatable<AStarNode>, IComparable<AStarNode>
         SplineKnotIndex fromSKIOrdered, toSKIOrdered;
         Utils.OrderSKIsByKnot(fromSKI, toSKI, out fromSKIOrdered, out toSKIOrdered);
 
-        BezierKnot fromKnot = splineContainer.Splines[fromSKIOrdered.Spline][fromSKIOrdered.Knot];
-        BezierKnot toKnot = splineContainer.Splines[toSKIOrdered.Spline][toSKIOrdered.Knot];
+        BezierKnot fromKnot = SplineContainer.Splines[fromSKIOrdered.Spline][fromSKIOrdered.Knot];
+        BezierKnot toKnot = SplineContainer.Splines[toSKIOrdered.Spline][toSKIOrdered.Knot];
         BezierCurve curve = new BezierCurve(fromKnot.Position, toKnot.Position);
 
         if (approximate)

@@ -17,8 +17,8 @@ public class Travel : MonoBehaviour
         Debug.ClearDeveloperConsole();
         splineAnimate = GetComponent<SplineAnimate>();
 
-        AStarNode startNode = new AStarNode(roadSplineContainer.KnotLinkCollection.GetKnotLinks(new SplineKnotIndex(1, 0)));
-        AStarNode endNode = new AStarNode(roadSplineContainer.KnotLinkCollection.GetKnotLinks(new SplineKnotIndex(2, 0)));
+        AStarNode startNode = new AStarNode(roadSplineContainer, new SplineKnotIndex(1, 0));
+        AStarNode endNode = new AStarNode(roadSplineContainer, new SplineKnotIndex(2, 0));
 
         LinkedList<AStarNode> path = ShortestPath(roadSplineContainer, startNode, endNode);
         SplinePath splinePath = GenerateSplinePath(roadSplineContainer, GenerateSplineSliceInfo(path));
@@ -38,7 +38,7 @@ public class Travel : MonoBehaviour
     LinkedList<AStarNode> ShortestPath(SplineContainer splineContainer, AStarNode startNode, AStarNode endNode)
     {
 
-        startNode.SetStartNodeCost(splineContainer, endNode);
+        startNode.SetStartNodeCost(endNode);
 
         HashSet<AStarNode> visited = new HashSet<AStarNode>();
         //TODO: Implement heap
@@ -58,7 +58,7 @@ public class Travel : MonoBehaviour
                 return path;
             }
 
-            HashSet<AStarNode> neighbors = current.GetNeighbors(splineContainer);
+            HashSet<AStarNode> neighbors = current.GetNeighbors();
             foreach (AStarNode n in neighbors)
             {
 
@@ -68,13 +68,13 @@ public class Travel : MonoBehaviour
                     bool heapContainsN = heap.TryGetValue(n, out heapN);
 
                     SplineKnotIndex currentSKI, parentSKI;
-                    bool isLinkedToCurrent = n.TryFindSKIConnectionToNode(splineContainer, current, out currentSKI, out parentSKI);
+                    bool isLinkedToCurrent = n.TryFindSKIConnectionToNode(current, out currentSKI, out parentSKI);
                     if (!isLinkedToCurrent) throw new Exception("Potential neighbor is not linked to parent");
 
                     AStarNode.ParentConnection parentConnection = new AStarNode.ParentConnection(currentSKI, parentSKI);
                     float fCost, gCost, hCost;
 
-                    n.ComputeCost(splineContainer, current, endNode, parentConnection, out gCost, out hCost);
+                    n.ComputeCost(current, endNode, parentConnection, out gCost, out hCost);
                     fCost = gCost + hCost;
 
                     if (heapContainsN)
