@@ -37,15 +37,16 @@ public class AStarNode : IEquatable<AStarNode>, IComparable<AStarNode>
     public AStarNode(SplineContainer splineContainer, SplineKnotIndex splineKnotIndex)
     {
         SplineContainer = splineContainer;
-        KnotLinksSet = SetKnotLinks(splineContainer.KnotLinkCollection.GetKnotLinks(splineKnotIndex));
+        KnotLinksSet = SetKnotLinks(splineKnotIndex);
         gCost = float.PositiveInfinity;
         hCost = float.NegativeInfinity;
         parentConnection = new ParentConnection();
     }
 
-    private SortedSet<SplineKnotIndex> SetKnotLinks(IReadOnlyList<SplineKnotIndex> knotLinks)
+    private SortedSet<SplineKnotIndex> SetKnotLinks(SplineKnotIndex splineKnotIndex)
     {
-        if (knotLinks.Count < 1) throw new Exception("KnotLinksSet is empty");
+        IReadOnlyList<SplineKnotIndex> knotLinks = SplineContainer.KnotLinkCollection.GetKnotLinks(splineKnotIndex);
+        if (knotLinks.Count == 0) throw new Exception("KnotLinksSet is empty"); // This will probably never happen due to how GetKnotLinks works;
         SortedSet<SplineKnotIndex> set = new SortedSet<SplineKnotIndex>(new Comparers.SplineKnotIndexComparer.SplineKnotIndexComparer());
         foreach (SplineKnotIndex ski in knotLinks)
         {

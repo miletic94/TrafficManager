@@ -1,5 +1,7 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using Unity.Mathematics;
 using UnityEngine;
@@ -8,15 +10,14 @@ using UnityEngine.TestTools;
 
 public class AStarTest
 {
-    private AStarNode startNode;
-    private AStarNode endNode;
-
+    private GameObject gameObject = new GameObject();
     private SplineContainer container;
 
     [SetUp]
     public void SetUp()
     {
-        container = new SplineContainer();
+        container = gameObject.AddComponent<SplineContainer>();
+
         Spline spline0, spline1, spline2, spline3;
 
         BezierKnot knot0 = new BezierKnot(new float3(0, 0, 0), new float3(0, 0, -5), new float3(0, 0, 5), new quaternion(0, 1, 0, 0));
@@ -48,9 +49,25 @@ public class AStarTest
         var knots3 = new BezierKnot[4] { knot9, knot10, knot11, knot12 };
         spline3 = new Spline(knots3);
 
-        container.AddSpline(spline0);
-        container.AddSpline(spline1);
-        container.AddSpline(spline2);
-        container.AddSpline(spline3);
+        container.Splines = new Spline[4] { spline0, spline1, spline2, spline3 };
+
+        container.KnotLinkCollection.Link(new SplineKnotIndex(0, 1), new SplineKnotIndex(1, 1));
+        container.KnotLinkCollection.Link(new SplineKnotIndex(0, 2), new SplineKnotIndex(3, 1));
+        container.KnotLinkCollection.Link(new SplineKnotIndex(1, 2), new SplineKnotIndex(2, 1));
+        container.KnotLinkCollection.Link(new SplineKnotIndex(2, 2), new SplineKnotIndex(3, 2));
+
+    }
+
+    [Test]
+    public void AStarNode_Instantiate()
+    {
+        SplineKnotIndex splineKnotIndex = new SplineKnotIndex(1, 1);
+        AStarNode node = new AStarNode(container, splineKnotIndex);
+
+        Assert.IsInstanceOf<AStarNode>(node);
+        Assert.AreEqual(new SplineKnotIndex(0, 1), node.KnotLinksSet.First());
+        Assert.AreEqual(node.gCost, float.PositiveInfinity);
+        Assert.AreEqual(node.hCost, float.NegativeInfinity);
+        Assert.AreEqual(node.fCost, float.NaN);
     }
 }
