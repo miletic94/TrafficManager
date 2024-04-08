@@ -68,13 +68,18 @@ public class Travel : MonoBehaviour
                     bool heapContainsN = heap.TryGetValue(n, out heapN);
 
                     SplineKnotIndex currentSKI, parentSKI;
-                    bool isLinkedToCurrent = n.TryFindSKIConnectionToNode(current, out currentSKI, out parentSKI);
-                    if (!isLinkedToCurrent) throw new Exception("Potential neighbor is not linked to parent");
+
+                    n.FindSKIConnectionToNode(current, out currentSKI, out parentSKI);
 
                     AStarNode.ParentConnection parentConnection = new AStarNode.ParentConnection(currentSKI, parentSKI);
                     float fCost, gCost, hCost;
 
-                    n.ComputeCost(current, endNode, parentConnection, out gCost, out hCost);
+                    Utils.DistanceCalculatorDelegate distanceCalculatorDelegate = Utils.GetDistanceBySKIConnections;
+
+                    SplineKnotIndex fromSKIOrdered, toSKIOrdered;
+                    Utils.OrderSKIsByKnot(n.parentConnection.CurrentSKI, n.parentConnection.ParentSKI, out fromSKIOrdered, out toSKIOrdered);
+
+                    n.ComputeCost(current, endNode, fromSKIOrdered, toSKIOrdered, distanceCalculatorDelegate, out gCost, out hCost);
                     fCost = gCost + hCost;
 
                     if (heapContainsN)

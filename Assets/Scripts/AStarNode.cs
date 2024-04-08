@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Codice.ThemeImages;
 using UnityEngine;
 using UnityEngine.Splines;
 
@@ -68,24 +69,25 @@ public class AStarNode : IEquatable<AStarNode>, IComparable<AStarNode>
         this.gCost = gCost;
         this.hCost = hCost;
     }
-
-    // Compute fCost for node that has parent (is not starting node)
-    public void ComputeCost(AStarNode parentNode, AStarNode endNode, ParentConnection parentConnection, out float gCost, out float hCost)
+    // Compute cost for node that has parent (is not starting node)
+    public void ComputeCost(AStarNode parentNode, AStarNode endNode, SplineKnotIndex fromSKI, SplineKnotIndex toSKI, Utils.DistanceCalculatorDelegate distanceCalculator, out float gCost, out float hCost)
     {
-        float distanceToParent = GetDistanceBySKIConnections(parentConnection.CurrentSKI, parentConnection.ParentSKI);
+        if (parentNode.fCost == float.NaN) throw new ArgumentException("fCost shouldn't be NaN");
+
+        float distanceToParent = distanceCalculator(SplineContainer, fromSKI, toSKI);
 
         gCost = parentNode.gCost + distanceToParent;
-        hCost = GetHCost(endNode);
+        hCost = ComputeHCost(endNode);
     }
 
-    // Compute fCost for the start node
+    // Compute cost for the start node
     public void ComputeCost(AStarNode endNode, out float gCost, out float hCost)
     {
         gCost = 0;
-        hCost = GetHCost(endNode);
+        hCost = ComputeHCost(endNode);
     }
 
-    float GetHCost(AStarNode endNode)
+    float ComputeHCost(AStarNode endNode)
     {
         BezierKnot endKnot = SplineContainer[endNode.KnotLinksSet.First().Spline][endNode.KnotLinksSet.First().Knot];
         BezierKnot currentKnot = SplineContainer[KnotLinksSet.First().Spline][KnotLinksSet.First().Knot];
@@ -98,26 +100,54 @@ public class AStarNode : IEquatable<AStarNode>, IComparable<AStarNode>
         HashSet<AStarNode> neighbors = new HashSet<AStarNode>();
         foreach (SplineKnotIndex splineKnotIndex in KnotLinksSet)
         {
-            Spline spline = SplineContainer[splineKnotIndex.Spline];
             int nextKnotIndex = splineKnotIndex.Knot + 1;
             int prevKnotIndex = splineKnotIndex.Knot - 1;
-            if (nextKnotIndex < spline.Count)
+            SplineKnotIndex nextSplineKnotIndex = new SplineKnotIndex(splineKnotIndex.Spline, nextKnotIndex);
+            SplineKnotIndex prevSplineKnotIndex = new SplineKnotIndex(splineKnotIndex.Spline, prevKnotIndex);
+            if (IsIndexValid(nextSplineKnotIndex))
             {
-                SplineKnotIndex nextSplineKnotIndex = new SplineKnotIndex(splineKnotIndex.Spline, nextKnotIndex);
                 neighbors.Add(new AStarNode(SplineContainer, nextSplineKnotIndex));
             }
 
-            if (prevKnotIndex > -1)
+            if (IsIndexValid(prevSplineKnotIndex))
             {
-                SplineKnotIndex prevSplineKnotIndex = new SplineKnotIndex(splineKnotIndex.Spline, prevKnotIndex);
                 neighbors.Add(new AStarNode(SplineContainer, prevSplineKnotIndex));
             }
+
         }
         return neighbors;
     }
 
+    internal bool IsIndexValid(SplineKnotIndex index)
+    {
+        return index.Spline < SplineContainer.Splines.Count && index.Knot >= 0 && index.Knot < SplineContainer.Splines[index.Spline].Count
+             && index.Knot < SplineContainer.Splines[index.Spline].Count;
+    }
+
+    /// <summary>
+    /// Attempts to find a connection between the current AStarNode and the specified AStarNode.
+    /// If a connection is found via a KnotLink connection, assigns the SplineKnotIndex
+    /// of the current node and the other node to the out variables.
+    /// </summary>
+    /// <param name="otherNode">The other AStarNode to check for connection.</param>
+    /// <param name="currentSKI">Output parameter: The SplineKnotIndex of the current node if connected.</param>
+    /// <param name="otherSKI">Output parameter: The SplineKnotIndex of the other node if connected.</param>
+    /// <returns>
+    /// Returns true if a connection is found between the current node and the other node,
+    /// and assigns the respective SplineKnotIndex values to the out parameters.
+    /// Returns false if no connection is found, in which case the out parameters are set to <see cref="SplineKnotIndex.Invalid"/.
+    /// </returns>
+    /// <remarks>
+    /// This method iterates through the KnotLinksSet of the current node and checks for connections 
+    /// with the KnotLinksSet of the other node. If a connection is found, it assigns the SplineKnotIndex 
+    /// values to the out parameters and returns true. If no connection is found, it sets the out parameters 
+    /// to SplineKnotIndex.Invalid and returns false.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">Thrown if otherNode is null.</exception>
+
     public bool TryFindSKIConnectionToNode(AStarNode otherNode, out SplineKnotIndex currentSKI, out SplineKnotIndex otherSKI)
     {
+        if (otherNode == null) throw new ArgumentNullException("Other node can't be null");
         if (!this.Equals(otherNode))
         {
             foreach (SplineKnotIndex processingSKICurrent in KnotLinksSet)
@@ -161,29 +191,28 @@ public class AStarNode : IEquatable<AStarNode>, IComparable<AStarNode>
         return true;
     }
 
-    // Use approximate to switch algorithm by which curve length is calculated.
-    // approximate = false will use CurveUtility.CalculateLength which is more precise, but slower. Here resolution parameter is used as precision measure.
-    // approximate = true will use CurveUtility.ApproximateLength which is faster, but less precise.
-    public float GetDistanceBySKIConnections(SplineKnotIndex fromSKI, SplineKnotIndex toSKI, bool approximate = false, int resolution = 30)
+    /// <summary>
+    /// Attempts to find a connection between the current node and the specified node.
+    /// If a connection is found via a KnotLink connection, assigns the SplineKnotIndex
+    /// of the current node and the other node to the out variables.
+    /// Uses the TryFindSKIConnectionToNode method internally.
+    /// </summary>
+    /// <param name="otherNode">The other node to check for connection.</param>
+    /// <param name="currentSKI">The SplineKnotIndex of the current node if connected.</param>
+    /// <param name="otherSKI">The SplineKnotIndex of the other node if connected.</param>
+    /// <exception cref="Exception">
+    /// Thrown if nodes do not have the necessary spline knot indexes 
+    /// by which they can be connected.
+    /// </exception>
+
+    public void FindSKIConnectionToNode(AStarNode otherNode, out SplineKnotIndex currentSKI, out SplineKnotIndex otherSKI)
     {
-        if (fromSKI.Equals(toSKI))
-        {
-            return 0;
-        }
 
-        SplineKnotIndex fromSKIOrdered, toSKIOrdered;
-        Utils.OrderSKIsByKnot(fromSKI, toSKI, out fromSKIOrdered, out toSKIOrdered);
+        bool isConnection = TryFindSKIConnectionToNode(otherNode, out currentSKI, out otherSKI);
 
-        BezierKnot fromKnot = SplineContainer.Splines[fromSKIOrdered.Spline][fromSKIOrdered.Knot];
-        BezierKnot toKnot = SplineContainer.Splines[toSKIOrdered.Spline][toSKIOrdered.Knot];
-        BezierCurve curve = new BezierCurve(fromKnot.Position, toKnot.Position);
-
-        if (approximate)
-        {
-            return CurveUtility.ApproximateLength(curve);
-        }
-        return CurveUtility.CalculateLength(curve, resolution);
+        if (!isConnection) throw new Exception("Potential neighbor is not linked to parent");
     }
+
 
     public override string ToString()
     {
